@@ -4,8 +4,8 @@
 {-# LANGUAGE ViewPatterns     #-}
 
 module MonadIO.File
-  ( hClose, readFileBinary, readFileUTF8, readFileUTF8Lenient
-  , stat, writeFileUTF8, writeFileBinary
+  ( getContentsUTF8, hClose, hGetContentsUTF8, readFileBinary, readFileUTF8
+  , readFileUTF8Lenient, stat, writeFileUTF8, writeFileBinary
   )
 where
 
@@ -19,7 +19,7 @@ import Data.Function           ( ($) )
 import Data.Functor            ( fmap )
 import Data.Maybe              ( Maybe )
 import System.IO               ( Handle, IOMode( ReadMode, WriteMode )
-                               , hSetEncoding, utf8, withFile )
+                               , hSetEncoding, stdin, utf8, withFile )
 
 -- base-unicode-symbols ----------------
 
@@ -98,6 +98,22 @@ readFileUTF8 fn =
 -- plagiarized from https://www.snoyman.com/blog/2016/12/beware-of-readfile
 readFileUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ File → μ Text
 readFileUTF8Lenient = decodeUtf8With lenientDecode ⩺ readFileBinary
+
+----------------------------------------
+
+{- | Read a filehandle of UTF8-encoded text. -}
+hGetContentsUTF8 ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
+                   Handle → μ Text
+hGetContentsUTF8 h = asIOError $ do
+  hSetEncoding h utf8
+  liftIO $ TextIO.hGetContents h
+
+----------------------------------------
+
+{- | Read UTF8-encoded text from `stdin`. -}
+getContentsUTF8  ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
+                   μ Text
+getContentsUTF8 = hGetContentsUTF8 stdin
 
 ----------------------------------------
 
