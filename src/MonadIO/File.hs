@@ -4,8 +4,8 @@
 {-# LANGUAGE ViewPatterns     #-}
 
 module MonadIO.File
-  ( getContentsUTF8, hClose, hGetContentsUTF8, readFileBinary, readFileUTF8
-  , readFileUTF8Lenient, stat, writeFileUTF8, writeFileBinary
+  ( getContentsUTF8, hClose, hGetContentsUTF8, readFileBinary, readFUTF8
+  , readFileUTF8, readFileUTF8Lenient, stat, writeFileUTF8, writeFileBinary
   )
 where
 
@@ -17,7 +17,7 @@ import Control.Monad           ( join )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Function           ( ($) )
 import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe )
+import Data.Maybe              ( Maybe( Just, Nothing ) )
 import System.IO               ( Handle, IOMode( ReadMode, WriteMode )
                                , hSetEncoding, stdin, utf8, withFile )
 
@@ -114,6 +114,14 @@ hGetContentsUTF8 h = asIOError $ do
 getContentsUTF8  ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
                    μ Text
 getContentsUTF8 = hGetContentsUTF8 stdin
+
+----------------------------------------
+
+{- | Read a file, as for `readFileUTF8`; if no file is provided, read `stdin`.
+ -}
+readFUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ Maybe File → μ Text
+readFUTF8 Nothing   = getContentsUTF8
+readFUTF8 (Just fn) = readFileUTF8 fn
 
 ----------------------------------------
 

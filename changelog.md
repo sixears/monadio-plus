@@ -1,3 +1,7 @@
+1.0.3.0 2020-01-19
+==================
+- add readFUTF8
+
 1.0.2.0 2020-01-19
 ==================
 - add getContentsUTF8, hGetContentsUTF8
