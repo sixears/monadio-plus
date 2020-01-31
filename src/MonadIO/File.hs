@@ -4,8 +4,10 @@
 {-# LANGUAGE ViewPatterns     #-}
 
 module MonadIO.File
-  ( getContentsUTF8, hClose, hGetContentsUTF8, readFileBinary, readFUTF8
-  , readFileUTF8, readFileUTF8Lenient, stat, writeFileUTF8, writeFileBinary
+  ( getContentsUTF8, getContentsUTF8Lenient, hClose, hGetContentsUTF8
+  , hGetContentsUTF8Lenient, readFileBinary, readHandleBinary, readFUTF8
+  , readFUTF8Lenient, readFileUTF8, readFileUTF8Lenient, stat, writeFileUTF8
+  , writeFileBinary
   )
 where
 
@@ -110,10 +112,26 @@ hGetContentsUTF8 h = asIOError $ do
 
 ----------------------------------------
 
+{- | Read a filehandle of UTF8-encoded text; be lenient as in
+     `readFileUTF8Lenient`. -}
+hGetContentsUTF8Lenient ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
+                          Handle → μ Text
+hGetContentsUTF8Lenient = decodeUtf8With lenientDecode ⩺ readHandleBinary
+
+----------------------------------------
+
 {- | Read UTF8-encoded text from `stdin`. -}
 getContentsUTF8  ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
                    μ Text
 getContentsUTF8 = hGetContentsUTF8 stdin
+
+----------------------------------------
+
+{- | Read UTF8-encoded text from `stdin`; be lenient as in
+     `readFileUTF8Lenient`. -}
+getContentsUTF8Lenient  ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
+                          μ Text
+getContentsUTF8Lenient = hGetContentsUTF8Lenient stdin
 
 ----------------------------------------
 
@@ -125,9 +143,24 @@ readFUTF8 (Just fn) = readFileUTF8 fn
 
 ----------------------------------------
 
+{- | Read a file, as for `readFileUTF8Lenient`; if no file is provided,
+     read `stdin`. -}
+readFUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ Maybe File → μ Text
+readFUTF8Lenient Nothing   = getContentsUTF8Lenient
+readFUTF8Lenient (Just fn) = readFileUTF8Lenient fn
+
+----------------------------------------
+
 -- | Same as 'BS.readFile', but generalized to 'MonadIO'
 readFileBinary ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ File → μ ByteString
 readFileBinary = asIOError ∘ liftIO ∘ BS.readFile ∘ review filepath
+
+----------------------------------------
+
+-- | Same as 'BS.hGetContents', but generalized to 'MonadIO'
+readHandleBinary ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒
+                   Handle → μ ByteString
+readHandleBinary = asIOError ∘ liftIO ∘ BS.hGetContents
 
 ----------------------------------------
 

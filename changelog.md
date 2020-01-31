@@ -1,3 +1,8 @@
+1.0.4.0 2020-01-31
+==================
+- add hGetContentsUTF8Lenient, getContentsUTF8Lenient, readFUTF8Lenient,
+  readHandleBinary
+
 1.0.3.0 2020-01-19
 ==================
 - add readFUTF8
