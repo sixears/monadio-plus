@@ -1,3 +1,9 @@
+1.0.5.0 2020-09-16
+==================
+- add fexists, withFile{,T}, access, writable, isWritable{File,Dir},
+  fileWritable
+- stat takes an AsFilePath
+
 1.0.4.0 2020-01-31
 ==================
 - add hGetContentsUTF8Lenient, getContentsUTF8Lenient, readFUTF8Lenient,
