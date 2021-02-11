@@ -10,7 +10,9 @@
 
 module MonadIO.File
   ( hClose
-  , withFile, withFileT, System.IO.IOMode(..)
+  , openFile, openFileA, openFileR, openFileRW, openFileW
+  , withFile, withFileA, withFileR, withFileRW, withFileW
+  , withFileT, System.IO.IOMode(..)
 
   , access, stat, writable
 
@@ -23,6 +25,7 @@ module MonadIO.File
   , getContentsUTF8Lenient, hGetContentsUTF8Lenient, readFileUTF8Lenient
   , readFUTF8Lenient
 
+  , fileFoldLines, fileFoldLinesH
   )
 where
 
@@ -39,8 +42,9 @@ import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe )
 import Data.String             ( String )
 import System.Exit             ( ExitCode )
 import System.IO               ( FilePath, Handle, IO
-                               , IOMode( ReadMode, WriteMode )
-                               , hSetEncoding, stdin, utf8
+                               , IOMode( AppendMode, ReadMode, ReadWriteMode
+                                       , WriteMode )
+                               , hIsEOF, hSetEncoding, stdin, utf8
                                )
 import Text.Show               ( Show )
 
@@ -65,8 +69,7 @@ import FPath.AbsFile      ( absfile )
 import FPath.AsFilePath   ( AsFilePath( filepath ) )
 import FPath.AsFilePath'  ( exterminate )
 import FPath.DirLike      ( IsDir )
-import FPath.File         ( File )
-import FPath.FileLike     ( IsFile )
+import FPath.File         ( FileAs( _File_ ) )
 import FPath.Parent       ( parent )
 
 -- lens --------------------------------
@@ -86,6 +89,7 @@ import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳⊳), (⩺) )
 import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
 import Data.MoreUnicode.Monad    ( (≫) )
 import Data.MoreUnicode.Natural  ( ℕ )
+import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- mtl ---------------------------------
 
@@ -218,13 +222,45 @@ statTests =
 
 ----------------------------------------
 
-withFile ∷ (MonadIO μ, IsFile π, AsIOError ε, MonadError ε μ) ⇒
-           π → IOMode → (Handle → IO ω) → μ ω
-withFile fn mode io = asIOError $ System.IO.withFile (fn ⫥ filepath) mode io
+openFile ∷ (MonadIO μ, FileAs γ) ⇒ γ → IOMode → μ Handle
+openFile (review _File_ → fn) = liftIO ∘ System.IO.openFile (fn ⫥ filepath)
 
-withFileT ∷ (MonadIO μ, IsFile π, AsIOError ε, MonadError ε μ) ⇒
-            π → IOMode → (Handle → ExceptT ε IO ω) → μ ω
-withFileT fn mode io =
+openFileR ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
+openFileR fn = openFile fn ReadMode
+
+openFileW ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
+openFileW fn = openFile fn WriteMode
+
+openFileRW ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
+openFileRW fn = openFile fn ReadWriteMode
+
+openFileA ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
+openFileA fn = openFile fn AppendMode
+
+withFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+           γ → IOMode → (Handle → IO ω) → μ ω
+withFile (review _File_ → fn) mode io =
+  asIOError $ System.IO.withFile (fn ⫥ filepath) mode io
+
+withFileA ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+            γ → (Handle → IO ω) → μ ω
+withFileA fn = withFile fn AppendMode
+
+withFileR ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+            γ → (Handle → IO ω) → μ ω
+withFileR fn = withFile fn ReadMode
+
+withFileRW ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+            γ → (Handle → IO ω) → μ ω
+withFileRW fn = withFile fn ReadWriteMode
+
+withFileW ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+            γ → (Handle → IO ω) → μ ω
+withFileW fn = withFile fn WriteMode
+
+withFileT ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+            γ → IOMode → (Handle → ExceptT ε IO ω) → μ ω
+withFileT (review _File_ → fn) mode io =
   join ∘ asIOError $ System.IO.withFile (fn ⫥ filepath) mode (\ h → ѥ (io h))
 
 ----------------------------------------
@@ -234,7 +270,7 @@ withFileT fn mode io =
 {- | Read a file in UTF8 encoding using OS-specific line-ending handling.
      Throw an exception on invalid character.
  -}
-readFileUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ File → μ Text
+readFileUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒ γ → μ Text
 readFileUTF8 fn =
   withFile fn ReadMode $ \ h → do
     hSetEncoding h utf8
@@ -247,8 +283,10 @@ readFileUTF8 fn =
      U+FFFD.
 -}
 -- plagiarized from https://www.snoyman.com/blog/2016/12/beware-of-readfile
-readFileUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ File → μ Text
-readFileUTF8Lenient = decodeUtf8With lenientDecode ⩺ readFileBinary
+readFileUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
+                      γ → μ Text
+readFileUTF8Lenient =
+  decodeUtf8With lenientDecode ⩺ readFileBinary ∘ review _File_
 
 ----------------------------------------
 
@@ -286,23 +324,25 @@ getContentsUTF8Lenient = hGetContentsUTF8Lenient stdin
 
 {- | Read a file, as for `readFileUTF8`; if no file is provided, read `stdin`.
  -}
-readFUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ Maybe File → μ Text
+readFUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ)⇒ Maybe γ → μ Text
 readFUTF8 Nothing   = getContentsUTF8
-readFUTF8 (Just fn) = readFileUTF8 fn
+readFUTF8 (Just fn) = readFileUTF8 (fn ⫥ _File_)
 
 ----------------------------------------
 
 {- | Read a file, as for `readFileUTF8Lenient`; if no file is provided,
      read `stdin`. -}
-readFUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ Maybe File → μ Text
+readFUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
+                   Maybe γ → μ Text
 readFUTF8Lenient Nothing   = getContentsUTF8Lenient
-readFUTF8Lenient (Just fn) = readFileUTF8Lenient fn
+readFUTF8Lenient (Just fn) = readFileUTF8Lenient (fn ⫥ _File_)
 
 ----------------------------------------
 
 -- | Same as 'BS.readFile', but generalized to 'MonadIO'
-readFileBinary ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒ File → μ ByteString
-readFileBinary = asIOError ∘ liftIO ∘ BS.readFile ∘ review filepath
+readFileBinary ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
+                 γ → μ ByteString
+readFileBinary = asIOError ∘ liftIO ∘ BS.readFile ∘ review (filepath ∘ _File_)
 
 ----------------------------------------
 
@@ -316,8 +356,8 @@ readHandleBinary = asIOError ∘ liftIO ∘ BS.hGetContents
 -- XXX SHOULD TAKE OVERWRITE OPTION, AND FILE MODE
 
 {- | Write a file in UTF8 encoding using OS-specific line-ending handling. -}
-writeFileUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒
-                File → Text → μ ()
+writeFileUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
+                γ → Text → μ ()
 writeFileUTF8 fn text =
   withFile fn WriteMode $ \h → do
     hSetEncoding h utf8
@@ -328,9 +368,9 @@ writeFileUTF8 fn text =
 -- XXX SHOULD TAKE OVERWRITE OPTION, AND FILE MODE
 
 -- | Same as 'BS.writeFile', but generalized to 'MonadIO'
-writeFileBinary ∷ ∀ ε μ . (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒
-                  File → ByteString → μ ()
-writeFileBinary fn = asIOError ∘ BS.writeFile (fn ⫥ filepath)
+writeFileBinary ∷ ∀ ε μ γ . (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
+                  γ → ByteString → μ ()
+writeFileBinary fn = asIOError ∘ BS.writeFile (fn ⫥ filepath ∘ _File_)
 
 ----------------------------------------
 
@@ -364,10 +404,10 @@ writable = access ACCESS_W
 ----------------------------------------
 
 {- | Is `f` an extant writable file? -}
-_isWritableFile ∷ (MonadIO μ, IsFile α,AsFilePath α,MonadError ε μ,AsIOError ε)⇒
-                  α → Maybe FileStatus -> μ (Maybe Text)
+_isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ ,AsIOError ε) ⇒
+                  γ → Maybe FileStatus -> μ (Maybe Text)
 
-_isWritableFile f st =
+_isWritableFile (review _File_ → f) st =
   let rJust = return ∘ Just
    in case st of
         Nothing  → rJust $ [fmt|%T does not exist|] f
@@ -381,10 +421,10 @@ _isWritableFile f st =
 ----------------------------------------
 
 {- | Is `f` an extant writable file? -}
-isWritableFile ∷ (MonadIO μ, IsFile α, AsFilePath α,MonadError ε μ,AsIOError ε)⇒
-                 α -> μ (Maybe Text)
+isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ, AsIOError ε) ⇒
+                 γ -> μ (Maybe Text)
 
-isWritableFile f = stat f ≫ _isWritableFile f
+isWritableFile (review _File_ → f) = stat f ≫ _isWritableFile f
 
 ----------------------------------------
 
@@ -433,10 +473,10 @@ isWritableDirTests =
      exist but is in a directory that is writable & executable by this user.
      In case of not writable, some error text is returned to say why.
  -}
-fileWritable ∷ ∀ α ε μ .
-               (MonadIO μ, IsFile α, AsFilePath α, AsIOError ε, MonadError ε μ)⇒
-               α → μ (Maybe Text)
-fileWritable fn = do
+fileWritable ∷ ∀ γ ε μ .
+               (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+               γ → μ (Maybe Text)
+fileWritable (review _File_ → fn) = do
   stat fn ≫ \ case
     Just st → _isWritableFile fn (Just st)
     Nothing → -- fn does not exist; does it have a writeable dir parent?
@@ -467,6 +507,23 @@ fileWritableTests =
 
             , testE' [absfile|/dev/null|] Nothing
             ]
+
+----------------------------------------
+
+
+{- | Work over a file, accumulating results, line-by-line. -}
+fileFoldLines ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                α → (α → 𝕋 → IO α) → γ → μ α
+fileFoldLines a io fn = withFileR fn $ fileFoldLinesH a io
+
+fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
+fileFoldLinesH a io h = do
+  eof ← liftIO $ hIsEOF h
+  case eof of
+    True  → return a
+    False → do l ← liftIO $ TextIO.hGetLine h
+               a' ← io a l
+               fileFoldLinesH a' io h
 
 ----------------------------------------
 

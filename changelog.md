@@ -1,3 +1,8 @@
+1.0.6.0 2021-02-11
+==================
+- add openFile{,A,R,RW,W}, withFile{A,R,RW,W}, fileFoldLines, fileFoldLinesH
+- use FPath.File.FileAs rather FPath.FileLike.IsFile
+
 1.0.5.0 2020-09-16
 ==================
 - add fexists, withFile{,T}, access, writable, isWritable{File,Dir},
