@@ -1,3 +1,7 @@
+1.0.7.0 2021-02-14
+==================
+- add MonadIO.File.devnull
+
 1.0.6.0 2021-02-11
 ==================
 - add openFile{,A,R,RW,W}, withFile{A,R,RW,W}, fileFoldLines, fileFoldLinesH

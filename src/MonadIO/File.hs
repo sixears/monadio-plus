@@ -14,6 +14,8 @@ module MonadIO.File
   , withFile, withFileA, withFileR, withFileRW, withFileW
   , withFileT, System.IO.IOMode(..)
 
+  , devnull
+
   , access, stat, writable
 
   , fileWritable, isWritableFile, isWritableDir
@@ -524,6 +526,11 @@ fileFoldLinesH a io h = do
     False → do l ← liftIO $ TextIO.hGetLine h
                a' ← io a l
                fileFoldLinesH a' io h
+
+----------------------------------------
+
+devnull ∷ MonadIO μ ⇒ μ Handle
+devnull = openFileRW [absfile|/dev/null|]
 
 ----------------------------------------
 
