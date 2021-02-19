@@ -9,10 +9,8 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.File
-  ( hClose
-  , openFile, openFileA, openFileR, openFileRW, openFileW
-  , withFile, withFileA, withFileR, withFileRW, withFileW
-  , withFileT, System.IO.IOMode(..)
+  ( System.IO.IOMode(..)
+  , hClose
 
   , devnull
 
@@ -20,14 +18,50 @@ module MonadIO.File
 
   , fileWritable, isWritableFile, isWritableDir
 
-  , readFileBinary, readHandleBinary, writeFileBinary
+  , openFile', openFileBinary', openFileUTF8'
+  , openFile, openFileBinary, openFileUTF8
 
-  , getContentsUTF8, hGetContentsUTF8, readFileUTF8, readFUTF8, writeFileUTF8
+  , openFileReadBinary', openFileReadWriteBinary', openFileReadWriteExBinary'
+  , openFileReadWriteNoTruncBinary'
+  , openFileWriteExBinary', openFileWriteBinary', openFileWriteNoTruncBinary'
+  , openFileAppendBinary'
+  
+  , openFileReadUTF8', openFileReadWriteUTF8', openFileReadWriteExUTF8'
+  , openFileReadWriteNoTruncUTF8'
+  , openFileWriteExUTF8', openFileWriteUTF8', openFileWriteNoTruncUTF8'
+  , openFileAppendUTF8'
+  
+  , openFileReadBinary, openFileReadWriteBinary, openFileReadWriteExBinary
+  , openFileReadWriteNoTruncBinary
+  , openFileWriteExBinary, openFileWriteBinary, openFileWriteNoTruncBinary
+  , openFileAppendBinary
+  
+  , openFileReadUTF8, openFileReadWriteUTF8, openFileReadWriteExUTF8
+  , openFileReadWriteNoTruncUTF8
+  , openFileWriteExUTF8, openFileWriteUTF8, openFileWriteNoTruncUTF8
+  , openFileAppendUTF8
+  
+  , withFile, withFileME, withFileUTF8, withFileBinary
 
-  , getContentsUTF8Lenient, hGetContentsUTF8Lenient, readFileUTF8Lenient
-  , readFUTF8Lenient
+  , withReadFileBinary, withReadWriteFileBinary, withReadWriteExFileBinary
+  , withReadWriteNoTruncFileBinary
+  , withWriteFileBinary, withWriteExFileBinary, withWriteNoTruncFileBinary
+  , withAppendFileBinary
 
-  , fileFoldLines, fileFoldLinesH
+  , withReadFileUTF8, withReadWriteFileUTF8, withReadWriteExFileUTF8
+  , withReadWriteNoTruncFileUTF8
+  , withWriteFileUTF8, withWriteExFileUTF8, withWriteNoTruncFileUTF8
+  , withAppendFileUTF8
+
+  , readFileBinary, writeFileBinary, writeExFileBinary, writeNoTruncFileBinary
+  , appendFileBinary
+
+  , readFileUTF8, writeFileUTF8, writeNoTruncFileUTF8, writeExFileUTF8
+  , appendFileUTF8
+
+  , readFileUTF8Lenient
+  
+  , fileFoldLinesUTF8, fileFoldLinesH
   )
 where
 
@@ -35,24 +69,29 @@ where
 
 import qualified  System.IO
 
+import Control.Exception       ( bracket )
 import Control.Monad           ( join, return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Bool               ( Bool( False, True ), bool )
+import Data.Either             ( Either)
 import Data.Eq                 ( Eq )
-import Data.Function           ( ($) )
+import Data.Function           ( ($), flip )
 import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe )
 import Data.String             ( String )
 import System.Exit             ( ExitCode )
-import System.IO               ( FilePath, Handle, IO
+import System.IO               ( FilePath, Handle, IO, NewlineMode, TextEncoding
                                , IOMode( AppendMode, ReadMode, ReadWriteMode
                                        , WriteMode )
-                               , hIsEOF, hSetEncoding, stdin, utf8
+                               , char8, hIsEOF, hSetEncoding, hSetNewlineMode
+                               , nativeNewlineMode, noNewlineTranslation, utf8
                                )
+import System.Posix.Types      ( FileMode )
 import Text.Show               ( Show )
 
 -- base-unicode-symbols ----------------
 
 import Data.Function.Unicode  ( (∘) )
+import Data.Monoid.Unicode    ( (⊕) )
 
 -- bytestring --------------------------
 
@@ -89,6 +128,7 @@ import MonadError.IO.Error  ( AsIOError, IOError, squashInappropriateTypeT )
 import Data.MoreUnicode.Bool     ( 𝔹 )
 import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳⊳), (⩺) )
 import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
+import Data.MoreUnicode.Maybe    ( 𝕄 )
 import Data.MoreUnicode.Monad    ( (≫) )
 import Data.MoreUnicode.Natural  ( ℕ )
 import Data.MoreUnicode.Text     ( 𝕋 )
@@ -103,17 +143,18 @@ import Test.Tasty  ( TestTree, testGroup )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( (@=?), testCase )
+import Test.Tasty.HUnit  ( Assertion, (@=?), testCase )
 
 -- tasty-plus --------------------------
 
-import TastyPlus  ( assertRight, runTestsP, runTestsReplay, runTestTree )
+import TastyPlus  ( assertIsLeft, assertRight, runTestsP, runTestsReplay
+                  , runTestTree )
 
 -- text --------------------------------
 
 import qualified  Data.Text.IO  as  TextIO
 
-import Data.Text                 ( Text )
+import Data.Text                 ( drop, length )
 import Data.Text.Encoding        ( decodeUtf8With )
 import Data.Text.Encoding.Error  ( lenientDecode )
 
@@ -124,7 +165,13 @@ import Text.Fmt  ( fmt )
 -- unix --------------------------------
 
 import qualified  System.Posix.Files  as  Files
-import System.Posix.Files  ( FileStatus, fileExist, getFileStatus, isDirectory )
+import System.Posix.Files  ( FileStatus, fileExist, getFileStatus, isDirectory
+                           , removeLink, setFileMode )
+import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
+                                          , noctty, nonBlock, trunc ),
+                             OpenMode( ReadOnly, ReadWrite, WriteOnly )
+                           , fdToHandle, noctty, nonBlock, openFd
+                           )
 
 --------------------------------------------------------------------------------
 
@@ -195,7 +242,7 @@ fexists'Tests =
 
 -- | file stat; returns Nothing if file does not exist
 stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
-       ρ → μ (Maybe FileStatus)
+       ρ → μ (𝕄 FileStatus)
 stat f = do
   -- The fexists' introduces a race-condition - bah - but without it, the
   -- stat may fail with an `InappropriateType` IOException when trying to stat
@@ -204,7 +251,7 @@ stat f = do
   fexists' f ≫ \ case
     NoFExists → return Nothing
     FExists   → asIOErrorY ∘ getFileStatus ∘ exterminate $ (f ⫥ filepath)
-    
+
 ----------
 
 statTests ∷ TestTree
@@ -224,61 +271,496 @@ statTests =
 
 ----------------------------------------
 
-openFile ∷ (MonadIO μ, FileAs γ) ⇒ γ → IOMode → μ Handle
-openFile (review _File_ → fn) = liftIO ∘ System.IO.openFile (fn ⫥ filepath)
+{- | OpenFileFlags suitable for reading. -}
+readFlags ∷ OpenFileFlags
+readFlags = OpenFileFlags { append = False, exclusive = False, noctty = False,
+                             nonBlock = False, trunc = False }
+--------------------
 
-openFileR ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
-openFileR fn = openFile fn ReadMode
+{- | OpenFileFlags suitable for read-write opens /with pre-truncation/
+     (analogous to writeFlags) . -}
+readWriteFlags ∷ OpenFileFlags
+readWriteFlags = OpenFileFlags { append = False, exclusive = False
+                               , noctty = False, nonBlock = False
+                               , trunc = True
+                               }
 
-openFileW ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
-openFileW fn = openFile fn WriteMode
+--------------------
 
-openFileRW ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
-openFileRW fn = openFile fn ReadWriteMode
+{- | OpenFileFlags suitable for read-write opens /with pre-truncation/
+     (analogous to writeFlags) . -}
+readWriteNoTruncFlags ∷ OpenFileFlags
+readWriteNoTruncFlags = OpenFileFlags { append = False, exclusive = False
+                                      , noctty = False, nonBlock = False
+                                      , trunc = False
+                                      }
 
-openFileA ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
-openFileA fn = openFile fn AppendMode
+--------------------
 
-withFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-           γ → IOMode → (Handle → IO ω) → μ ω
-withFile (review _File_ → fn) mode io =
-  asIOError $ System.IO.withFile (fn ⫥ filepath) mode io
+{- | OpenFileFlags suitable for read-write opens, with exclusive (file must
+     not pre-exist (man file(2):O_EXCL). -}
+readWriteExFlags ∷ OpenFileFlags
+readWriteExFlags = OpenFileFlags { append = False, exclusive = True
+                                 , noctty = False, nonBlock = False
+                                 , trunc = False
+                                 }
 
-withFileA ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-            γ → (Handle → IO ω) → μ ω
-withFileA fn = withFile fn AppendMode
+--------------------
 
-withFileR ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-            γ → (Handle → IO ω) → μ ω
-withFileR fn = withFile fn ReadMode
+{- | OpenFileFlags suitable for writing /with pre-truncation/; this is just the
+      `trunc` (man file(2):O_TRUNC) flag. -}
+writeFlags ∷ OpenFileFlags
+writeFlags = OpenFileFlags { append = False, exclusive = False, noctty = False
+                           , nonBlock = False, trunc = True }
 
-withFileRW ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-            γ → (Handle → IO ω) → μ ω
-withFileRW fn = withFile fn ReadWriteMode
+--------------------
 
-withFileW ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-            γ → (Handle → IO ω) → μ ω
-withFileW fn = withFile fn WriteMode
+{- | OpenFileFlags suitable for writing /without pre-truncating/. -}
+writeNoTruncFlags ∷ OpenFileFlags
+writeNoTruncFlags = OpenFileFlags { append = False, exclusive = False
+                                  , noctty = False, nonBlock = False
+                                  , trunc = False }
 
-withFileT ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-            γ → IOMode → (Handle → ExceptT ε IO ω) → μ ω
-withFileT (review _File_ → fn) mode io =
-  join ∘ asIOError $ System.IO.withFile (fn ⫥ filepath) mode (\ h → ѥ (io h))
+--------------------
+
+{- | OpenFileFlags suitable for writing a new file; this is just the `exclusive`
+     (man file(2):O_EXCL) flag.
+     This seems redundant in practice, but I've added it here as a belt'n'braces
+     thing.
+-}
+writeExFlags ∷ OpenFileFlags
+writeExFlags = OpenFileFlags { append = False, exclusive = True, noctty = False,
+                               nonBlock = False, trunc = False }
+
+--------------------
+
+{- | OpenFileFlags suitable for appending; this is just the `append`
+     (man file(2):O_APPEND) flag. -}
+appendFlags ∷ OpenFileFlags
+appendFlags = OpenFileFlags { append = True, exclusive = False, noctty = False,
+                              nonBlock = False, trunc = False }
 
 ----------------------------------------
 
--- cribbed shamelessly from RIO.Prelude.IO
+openFile' ∷ (MonadIO μ, FileAs γ) ⇒
+            TextEncoding → NewlineMode → IOMode → (𝕄 FileMode) → OpenFileFlags
+          → γ → μ Handle
+openFile' enc nlm mode perms flags (review _File_ → fn) = liftIO $ do
+  let openMode ReadMode      = ReadOnly
+      openMode WriteMode     = WriteOnly
+      openMode ReadWriteMode = ReadWrite
+      openMode AppendMode    = WriteOnly
+      flags'   = case mode of
+                   AppendMode → flags { append = True }
+                   _          → flags
+  h ← openFd (fn ⫥ filepath) (openMode mode) perms flags' ≫ fdToHandle
+  hSetEncoding h enc
+  hSetNewlineMode h nlm
+  return h
+
+--------------------
+
+openFileUTF8' ∷ (MonadIO μ, FileAs γ) ⇒
+                IOMode → (𝕄 FileMode) → OpenFileFlags → γ → μ Handle
+openFileUTF8' = openFile' utf8 nativeNewlineMode
+
+--------------------
+
+openFileBinary' ∷ (MonadIO μ, FileAs γ) ⇒
+                  IOMode → (𝕄 FileMode) → OpenFileFlags → γ → μ Handle
+openFileBinary' = openFile' char8 noNewlineTranslation
+
+----------------------------------------
+
+openFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+           TextEncoding → NewlineMode → IOMode → (𝕄 FileMode) → OpenFileFlags
+         → γ → μ Handle
+openFile enc nlm mode perms flags fn =
+   asIOError $ openFile' enc nlm mode perms flags fn
+
+--------------------
+
+openFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                  IOMode → (𝕄 FileMode) → OpenFileFlags → γ → μ Handle
+openFileUTF8 mode perms flags = asIOError ∘ openFileUTF8' mode perms flags
+
+--------------------
+
+openFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                  IOMode → (𝕄 FileMode) → OpenFileFlags → γ → μ Handle
+openFileBinary mode perms flags =
+  asIOError ∘ openFileBinary' mode perms flags
+
+----------------------------------------
+
+openFileReadBinary' ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
+openFileReadBinary' = liftIO ∘ openFileBinary' ReadMode Nothing readFlags
+
+openFileReadWriteBinary' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteBinary' perms =
+  openFileBinary' ReadWriteMode perms readWriteFlags
+
+openFileReadWriteNoTruncBinary' ∷ (MonadIO μ, FileAs γ) ⇒
+                                  (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteNoTruncBinary' perms =
+  openFileBinary' ReadWriteMode perms readWriteNoTruncFlags
+
+openFileReadWriteExBinary' ∷ (MonadIO μ, FileAs γ) ⇒
+                             (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteExBinary' perms =
+  openFileBinary' ReadWriteMode perms readWriteExFlags
+
+openFileWriteNoTruncBinary' ∷ (MonadIO μ, FileAs γ) ⇒
+                              (𝕄 FileMode) → γ → μ Handle
+openFileWriteNoTruncBinary' perms =
+  openFileBinary' WriteMode perms writeNoTruncFlags
+
+openFileWriteExBinary' ∷ (MonadIO μ, FileAs γ) ⇒ FileMode → γ → μ Handle
+openFileWriteExBinary' perms =
+  openFileBinary' WriteMode (Just perms) writeExFlags
+
+openFileWriteBinary' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileWriteBinary' perms =
+  openFileBinary' WriteMode perms writeFlags
+
+openFileAppendBinary' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileAppendBinary' perms = openFileBinary' AppendMode perms appendFlags
+
+----------------------------------------
+
+openFileReadUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ γ → μ Handle
+openFileReadUTF8' = liftIO ∘ openFileUTF8' ReadMode Nothing readFlags
+
+openFileReadWriteUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteUTF8' perms = openFileUTF8' ReadWriteMode perms readWriteFlags
+
+openFileReadWriteNoTruncUTF8' ∷ (MonadIO μ, FileAs γ) ⇒
+                                (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteNoTruncUTF8' perms =
+  openFileUTF8' ReadWriteMode perms readWriteNoTruncFlags
+
+openFileReadWriteExUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteExUTF8' perms =
+  openFileUTF8' ReadWriteMode perms readWriteExFlags
+
+openFileWriteUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileWriteUTF8' perms = openFileUTF8' WriteMode perms writeFlags
+
+openFileWriteNoTruncUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileWriteNoTruncUTF8' perms =
+  openFileUTF8' WriteMode perms writeNoTruncFlags
+
+openFileWriteExUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ FileMode → γ → μ Handle
+openFileWriteExUTF8' perms = openFileUTF8' WriteMode (Just perms) writeExFlags
+
+openFileAppendUTF8' ∷ (MonadIO μ, FileAs γ) ⇒ (𝕄 FileMode) → γ → μ Handle
+openFileAppendUTF8' perms = openFileUTF8' AppendMode perms appendFlags
+
+----------------------------------------
+
+openFileReadBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                       γ → μ Handle
+openFileReadBinary = asIOError ∘ openFileReadBinary'
+
+openFileReadWriteBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                          (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteBinary perms = asIOError ∘ openFileReadWriteBinary' perms
+
+openFileReadWriteNoTruncBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ,
+                                  FileAs γ) ⇒
+                                 (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteNoTruncBinary perms =
+  asIOError ∘ openFileReadWriteNoTruncBinary' perms
+
+openFileReadWriteExBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                          (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteExBinary perms = asIOError ∘ openFileReadWriteExBinary' perms
+
+openFileWriteBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                      (𝕄 FileMode) → γ → μ Handle
+openFileWriteBinary perms = asIOError ∘ openFileWriteBinary' perms
+
+openFileWriteNoTruncBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                      (𝕄 FileMode) → γ → μ Handle
+openFileWriteNoTruncBinary perms = asIOError ∘ openFileWriteNoTruncBinary' perms
+
+openFileWriteExBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                        FileMode → γ → μ Handle
+openFileWriteExBinary perms = asIOError ∘ openFileWriteExBinary' perms
+
+openFileAppendBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                       (𝕄 FileMode) → γ → μ Handle
+openFileAppendBinary perms = asIOError ∘ openFileAppendBinary' perms
+
+----------------------------------------
+
+openFileReadUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                   γ → μ Handle
+openFileReadUTF8 = asIOError ∘ openFileReadUTF8'
+
+openFileReadWriteUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                        (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteUTF8 perms = asIOError ∘ openFileReadWriteUTF8' perms
+
+openFileReadWriteNoTruncUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ,
+                                FileAs γ) ⇒
+                               (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteNoTruncUTF8 perms =
+  asIOError ∘ openFileReadWriteNoTruncUTF8' perms
+
+openFileReadWriteExUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                          (𝕄 FileMode) → γ → μ Handle
+openFileReadWriteExUTF8 perms = asIOError ∘ openFileReadWriteExUTF8' perms
+
+openFileWriteUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                    (𝕄 FileMode) → γ → μ Handle
+openFileWriteUTF8 perms = asIOError ∘ openFileWriteUTF8' perms
+
+openFileWriteNoTruncUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                           (𝕄 FileMode) → γ → μ Handle
+openFileWriteNoTruncUTF8 perms = asIOError ∘ openFileWriteNoTruncUTF8' perms
+
+openFileWriteExUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                      FileMode → γ → μ Handle
+openFileWriteExUTF8 perms = asIOError ∘ openFileWriteExUTF8' perms
+
+openFileAppendUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                     (𝕄 FileMode) → γ → μ Handle
+openFileAppendUTF8 perms = asIOError ∘ openFileAppendUTF8' perms
+
+----------------------------------------
+
+withFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+           TextEncoding → NewlineMode → IOMode → (𝕄 FileMode) → OpenFileFlags
+         → γ → (Handle → IO ω) → μ ω
+withFile enc nlm mode perms flags (review _File_ → fn) io = asIOError $
+   bracket (openFile' enc nlm mode perms flags fn) System.IO.hClose io
+
+--------------------
+
+withFileME ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+             TextEncoding → NewlineMode → IOMode → (𝕄 FileMode)
+           → OpenFileFlags → γ → (Handle → ExceptT ε IO ω) → μ ω
+withFileME enc nlm mode perms flags fn io =
+  join $ withFile enc nlm mode perms flags fn (ѥ ∘ io)
+
+----------------------------------------
+
+withFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                 IOMode → (𝕄 FileMode) → OpenFileFlags → γ → (Handle → IO ω)
+               → μ ω
+withFileUTF8 = withFile utf8 nativeNewlineMode
+
+--------------------
+
+withFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                   IOMode → (𝕄 FileMode) → OpenFileFlags → γ → (Handle → IO ω)
+                 → μ ω
+withFileBinary = withFile char8 noNewlineTranslation
+
+----------------------------------------
+
+withReadFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                   γ → (Handle → IO ω) → μ ω
+withReadFileBinary = withFileBinary ReadMode Nothing readFlags
+
+withReadWriteFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                          (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withReadWriteFileBinary perms =
+  withFileBinary ReadWriteMode perms readWriteFlags
+
+withReadWriteNoTruncFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε,
+                                  MonadError ε μ) ⇒
+                                 (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withReadWriteNoTruncFileBinary perms =
+  withFileBinary ReadWriteMode perms readWriteNoTruncFlags
+
+withReadWriteExFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                            FileMode → γ → (Handle → IO ω) → μ ω
+withReadWriteExFileBinary perms =
+  withFileBinary ReadWriteMode (Just perms) readWriteExFlags
+
+withWriteFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                    (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withWriteFileBinary perms = withFileBinary WriteMode perms writeFlags
+
+withWriteNoTruncFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε,
+                              MonadError ε μ) ⇒
+                             (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withWriteNoTruncFileBinary perms =
+  withFileBinary WriteMode perms writeNoTruncFlags
+
+withWriteExFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                        FileMode → γ → (Handle → IO ω) → μ ω
+withWriteExFileBinary perms = withFileBinary WriteMode (Just perms) writeExFlags
+
+withAppendFileBinary ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                       (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withAppendFileBinary perms = withFileBinary AppendMode perms appendFlags
+
+----------------------------------------
+
+withReadFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                   γ → (Handle → IO ω) → μ ω
+withReadFileUTF8 = withFileUTF8 ReadMode Nothing readFlags
+
+withReadWriteFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                        (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withReadWriteFileUTF8 perms = withFileUTF8 ReadWriteMode perms readWriteFlags
+
+withReadWriteNoTruncFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε,
+                                  MonadError ε μ) ⇒
+                                 (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withReadWriteNoTruncFileUTF8 perms =
+  withFileUTF8 ReadWriteMode perms readWriteNoTruncFlags
+
+withReadWriteExFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                          FileMode → γ → (Handle → IO ω) → μ ω
+withReadWriteExFileUTF8 perms =
+  withFileUTF8 ReadWriteMode (Just perms) readWriteExFlags
+
+withWriteFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                    (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withWriteFileUTF8 perms = withFileUTF8 WriteMode perms writeFlags
+
+withWriteNoTruncFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε,
+                            MonadError ε μ) ⇒
+                           (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withWriteNoTruncFileUTF8 perms = withFileUTF8 WriteMode perms writeNoTruncFlags
+
+withWriteExFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                      FileMode → γ → (Handle → IO ω) → μ ω
+withWriteExFileUTF8 perms = withFileUTF8 WriteMode (Just perms) writeExFlags
+
+withAppendFileUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                       (𝕄 FileMode) → γ → (Handle → IO ω) → μ ω
+withAppendFileUTF8 perms = withFileUTF8 AppendMode perms appendFlags
+
+----------------------------------------
 
 {- | Read a file in UTF8 encoding using OS-specific line-ending handling.
      Throw an exception on invalid character.
  -}
-readFileUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒ γ → μ Text
-readFileUTF8 fn =
-  withFile fn ReadMode $ \ h → do
-    hSetEncoding h utf8
-    TextIO.hGetContents h
+readFileUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ γ → μ 𝕋
+readFileUTF8 fn = withReadFileUTF8 fn TextIO.hGetContents
 
---------------------
+{- | Read a file as bytes. -}
+readFileBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                 γ → μ ByteString
+readFileBinary fn = withReadFileBinary fn BS.hGetContents
+
+writeFileBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                  𝕄 FileMode → γ → 𝕋 → μ ()
+writeFileBinary perms fn t =
+  withWriteFileBinary perms fn (flip TextIO.hPutStr t)
+
+{- | Write a file in UTF8 encoding using OS-specific line-ending handling.
+     `perms`, if not Nothing, will be used to create the file if it doesn't
+     exist.  If it does exist, `perms` has no impact (use `chmod` to really
+     force it).  If `perms is Nothing, and the file does not exist, then an
+     exception shall be thrown.
+ -}
+writeFileUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                𝕄 FileMode → γ → 𝕋 → μ ()
+writeFileUTF8 perms fn t = withWriteFileUTF8 perms fn (flip TextIO.hPutStr t)
+
+writeNoTruncFileBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                         𝕄 FileMode → γ → 𝕋 → μ ()
+writeNoTruncFileBinary perms fn t =
+  withWriteNoTruncFileBinary perms fn (flip TextIO.hPutStr t)
+
+writeNoTruncFileUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                        𝕄 FileMode → γ → 𝕋 → μ ()
+writeNoTruncFileUTF8 perms fn t =
+  withWriteNoTruncFileUTF8 perms fn (flip TextIO.hPutStr t)
+
+writeExFileBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                  FileMode → γ → 𝕋 → μ ()
+writeExFileBinary perms fn t =
+  withWriteExFileBinary perms fn (flip TextIO.hPutStr t)
+
+writeExFileUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                  FileMode → γ → 𝕋 → μ ()
+writeExFileUTF8 perms fn t = withWriteExFileUTF8 perms fn (flip TextIO.hPutStr t)
+
+{- | Write a file in UTF8 encoding using OS-specific line-ending handling.
+     `perms`, if not Nothing, will be used to create the file if it doesn't
+     exist.  If it does exist, `perms` has no impact (use `chmod` to really
+     force it).  If `perms is Nothing, and the file does not exist, then an
+     exception shall be thrown.
+ -}
+appendFileUTF8 ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                𝕄 FileMode → γ → 𝕋 → μ ()
+appendFileUTF8 perms fn t =
+  withFileUTF8 AppendMode perms appendFlags fn (flip TextIO.hPutStr t)
+
+appendFileBinary ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒
+                𝕄 FileMode → γ → 𝕋 → μ ()
+appendFileBinary perms fn t =
+  withFileBinary AppendMode perms appendFlags fn (flip TextIO.hPutStr t)
+
+withFileTests ∷ TestTree
+withFileTests =
+  let f = [absfile|/tmp/monadio-file-test.txt|]
+      txt = "Swap twenty bottles for an aqua-walkman"
+      t2  = "Medicine Show: "
+      assertIsRight ∷ Either IOError () → Assertion
+      assertIsRight = assertRight (\ _ → () @=? ())
+      read ∷ FileAs γ ⇒ γ → IO (Either IOError 𝕋)
+      read fn = ѥ $ readFileUTF8 fn
+      write ∷ FileAs γ ⇒ 𝕄 FileMode → γ → 𝕋 → IO (Either IOError ())
+      write perms fn t = ѥ $ writeFileUTF8 perms fn t
+      writeNoTrunc ∷ FileAs γ ⇒ 𝕄 FileMode → γ → 𝕋 → IO (Either IOError ())
+      writeNoTrunc perms fn t = ѥ $ writeNoTruncFileUTF8 perms fn t
+      -- `append` is imported from System.Posix.IO, so don't shadow that
+      appnd ∷ FileAs γ ⇒ 𝕄 FileMode → γ → 𝕋 → IO (Either IOError ())
+      appnd perms fn t = ѥ $ appendFileUTF8 perms fn t
+      testRead fn t =
+        testCase "readFileUTF8" $ read fn ≫ assertRight (t @=?)
+      testReadFail fn =
+        testCase "readFileUTF8 fail" $ read fn ≫ assertIsLeft
+      testWrite perms fn t =
+        testCase "writeFileUTF8" $ write perms fn t ≫ assertIsRight
+      testWriteNoTrunc perms fn t =
+        testCase "writeNoTruncFileUTF8" $
+          writeNoTrunc perms fn t ≫ assertIsRight
+      testWriteFail perms fn t =
+        testCase "writeFileUTF8 fail" $ write perms fn t ≫ assertIsLeft
+      testAppend perms fn t =
+        testCase "appendFileUTF8" $ appnd perms fn t ≫ assertIsRight
+      testAppendFail perms fn t =
+        testCase "appendFileUTF8 fail" $ appnd perms fn t ≫ assertIsLeft
+   in testGroup "withFile"
+                [ -- WRITE NEW FILE NO PERMS, CHECK FOR FAILURE
+                  testWriteFail Nothing f txt
+                , testWrite (Just 0o600) f txt
+                , testRead f txt
+                -- re-write, to check for lack of auto-truncation
+                , testWriteNoTrunc (Just 0o600) f t2
+                , testRead f (t2 ⊕ drop (length t2) txt)
+                , testAppend (Just 0o600) f txt
+                , testRead f (t2 ⊕ drop (length t2) txt ⊕ txt)
+                -- DELETE
+                , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
+                -- TEST READ FAIL
+                , testReadFail f
+                -- APPEND NEW FAIL
+                , testAppendFail Nothing f txt
+                , testAppend (Just 0o000) f txt
+                -- TEST READ FAIL
+                , testReadFail f
+                , testCase "chmod" $ ѥ (chmod 0400 f) ≫ assertIsRight
+                -- DELETE
+                , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
+                ]
+
+unlink ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ γ → μ ()
+unlink (review _File_ → fn) = asIOError $ removeLink (fn ⫥ filepath)
+
+chmod ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ FileMode → γ → μ ()
+chmod perms (review _File_ → fn) = asIOError $ setFileMode (fn ⫥ filepath) perms
+
+----------------------------------------
 
 {- | Read a file in UTF8 encoding using OS-specific line-ending handling.
      Replace any invalid input bytes with the Unicode replacement character
@@ -286,93 +768,8 @@ readFileUTF8 fn =
 -}
 -- plagiarized from https://www.snoyman.com/blog/2016/12/beware-of-readfile
 readFileUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
-                      γ → μ Text
-readFileUTF8Lenient =
-  decodeUtf8With lenientDecode ⩺ readFileBinary ∘ review _File_
-
-----------------------------------------
-
-{- | Read a filehandle of UTF8-encoded text. -}
-hGetContentsUTF8 ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
-                   Handle → μ Text
-hGetContentsUTF8 h = asIOError $ do
-  hSetEncoding h utf8
-  liftIO $ TextIO.hGetContents h
-
-----------------------------------------
-
-{- | Read a filehandle of UTF8-encoded text; be lenient as in
-     `readFileUTF8Lenient`. -}
-hGetContentsUTF8Lenient ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
-                          Handle → μ Text
-hGetContentsUTF8Lenient = decodeUtf8With lenientDecode ⩺ readHandleBinary
-
-----------------------------------------
-
-{- | Read UTF8-encoded text from `stdin`. -}
-getContentsUTF8  ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
-                   μ Text
-getContentsUTF8 = hGetContentsUTF8 stdin
-
-----------------------------------------
-
-{- | Read UTF8-encoded text from `stdin`; be lenient as in
-     `readFileUTF8Lenient`. -}
-getContentsUTF8Lenient  ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
-                          μ Text
-getContentsUTF8Lenient = hGetContentsUTF8Lenient stdin
-
-----------------------------------------
-
-{- | Read a file, as for `readFileUTF8`; if no file is provided, read `stdin`.
- -}
-readFUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ)⇒ Maybe γ → μ Text
-readFUTF8 Nothing   = getContentsUTF8
-readFUTF8 (Just fn) = readFileUTF8 (fn ⫥ _File_)
-
-----------------------------------------
-
-{- | Read a file, as for `readFileUTF8Lenient`; if no file is provided,
-     read `stdin`. -}
-readFUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
-                   Maybe γ → μ Text
-readFUTF8Lenient Nothing   = getContentsUTF8Lenient
-readFUTF8Lenient (Just fn) = readFileUTF8Lenient (fn ⫥ _File_)
-
-----------------------------------------
-
--- | Same as 'BS.readFile', but generalized to 'MonadIO'
-readFileBinary ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
-                 γ → μ ByteString
-readFileBinary = asIOError ∘ liftIO ∘ BS.readFile ∘ review (filepath ∘ _File_)
-
-----------------------------------------
-
--- | Same as 'BS.hGetContents', but generalized to 'MonadIO'
-readHandleBinary ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒
-                   Handle → μ ByteString
-readHandleBinary = asIOError ∘ liftIO ∘ BS.hGetContents
-
-----------------------------------------
-
--- XXX SHOULD TAKE OVERWRITE OPTION, AND FILE MODE
-
-{- | Write a file in UTF8 encoding using OS-specific line-ending handling. -}
-writeFileUTF8 ∷ (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
-                γ → Text → μ ()
-writeFileUTF8 fn text =
-  withFile fn WriteMode $ \h → do
-    hSetEncoding h utf8
-    TextIO.hPutStr h text
-
-----------------------------------------
-
--- XXX SHOULD TAKE OVERWRITE OPTION, AND FILE MODE
-
--- | Same as 'BS.writeFile', but generalized to 'MonadIO'
-writeFileBinary ∷ ∀ ε μ γ . (AsIOError ε, MonadError ε μ, MonadIO μ, FileAs γ) ⇒
-                  γ → ByteString → μ ()
-writeFileBinary fn = asIOError ∘ BS.writeFile (fn ⫥ filepath ∘ _File_)
+                      γ → μ 𝕋
+readFileUTF8Lenient fn = decodeUtf8With lenientDecode ⊳ readFileBinary fn
 
 ----------------------------------------
 
@@ -386,7 +783,7 @@ data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX
                 | ACCESS_X | ACCESS_RW
 
 access ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
-         AccessMode → ρ → μ (Maybe 𝔹)
+         AccessMode → ρ → μ (𝕄 𝔹)
 access mode ((⫥ filepath) → fp) = asIOErrorY $ go mode fp
   where go ∷ AccessMode → FilePath → IO 𝔹
         go ACCESS_R   p = Files.fileAccess (p ⫥ filepath) True  False False
@@ -400,14 +797,14 @@ access mode ((⫥ filepath) → fp) = asIOErrorY $ go mode fp
 {- | Simple shortcut for file (or directory) is writable by this user; `Nothing`
      is returned if file does not exist. -}
 writable ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
-            ρ → μ (Maybe 𝔹)
+            ρ → μ (𝕄 𝔹)
 writable = access ACCESS_W
 
 ----------------------------------------
 
 {- | Is `f` an extant writable file? -}
 _isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ ,AsIOError ε) ⇒
-                  γ → Maybe FileStatus -> μ (Maybe Text)
+                  γ → 𝕄 FileStatus -> μ (𝕄 𝕋)
 
 _isWritableFile (review _File_ → f) st =
   let rJust = return ∘ Just
@@ -424,7 +821,7 @@ _isWritableFile (review _File_ → f) st =
 
 {- | Is `f` an extant writable file? -}
 isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ, AsIOError ε) ⇒
-                 γ -> μ (Maybe Text)
+                 γ -> μ (𝕄 𝕋)
 
 isWritableFile (review _File_ → f) = stat f ≫ _isWritableFile f
 
@@ -433,7 +830,7 @@ isWritableFile (review _File_ → f) = stat f ≫ _isWritableFile f
 {- | Is `d` an extant writable directory? -}
 isWritableDir ∷ ∀ α ε μ .
                 (MonadIO μ, IsDir α, AsFilePath α, MonadError ε μ, AsIOError ε)⇒
-                α -> μ (Maybe Text)
+                α -> μ (𝕄 𝕋)
 
 isWritableDir d =
   let rJust = return ∘ Just
@@ -477,7 +874,7 @@ isWritableDirTests =
  -}
 fileWritable ∷ ∀ γ ε μ .
                (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-               γ → μ (Maybe Text)
+               γ → μ (𝕄 𝕋)
 fileWritable (review _File_ → fn) = do
   stat fn ≫ \ case
     Just st → _isWritableFile fn (Just st)
@@ -512,11 +909,10 @@ fileWritableTests =
 
 ----------------------------------------
 
-
 {- | Work over a file, accumulating results, line-by-line. -}
-fileFoldLines ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-                α → (α → 𝕋 → IO α) → γ → μ α
-fileFoldLines a io fn = withFileR fn $ fileFoldLinesH a io
+fileFoldLinesUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+                     α → (α → 𝕋 → IO α) → γ → μ α
+fileFoldLinesUTF8 a io fn = withReadFileUTF8 fn $ fileFoldLinesH a io
 
 fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
 fileFoldLinesH a io h = do
@@ -529,14 +925,16 @@ fileFoldLinesH a io h = do
 
 ----------------------------------------
 
-devnull ∷ MonadIO μ ⇒ μ Handle
-devnull = openFileRW [absfile|/dev/null|]
+{- | An open RW handle to /dev/null. -}
+devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒ μ Handle
+devnull = openFileReadWriteNoTruncBinary Nothing [absfile|/dev/null|]
 
 ----------------------------------------
 
 tests ∷ TestTree
 tests = testGroup "MonadIO.File" [ fexistsTests, fexists'Tests, statTests
-                                 , isWritableDirTests, fileWritableTests ]
+                                 , isWritableDirTests, fileWritableTests
+                                 , withFileTests ]
 
 --------------------
 

@@ -1,3 +1,7 @@
+1.1.0.0 2021-02-19
+==================
+- rework openFile*, withFile*
+
 1.0.7.0 2021-02-14
 ==================
 - add MonadIO.File.devnull
