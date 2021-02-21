@@ -1,3 +1,7 @@
+1.1.1.0 2021-02-21
+==================
+- export {read,write,append}*Flags
+
 1.1.0.0 2021-02-19
 ==================
 - rework openFile*, withFile*

@@ -62,6 +62,9 @@ module MonadIO.File
   , readFileUTF8Lenient
   
   , fileFoldLinesUTF8, fileFoldLinesH
+
+  , readFlags, readWriteFlags, readWriteExFlags, readWriteNoTruncFlags
+  , writeFlags, writeExFlags, writeNoTruncFlags, appendFlags
   )
 where
 
