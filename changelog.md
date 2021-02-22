@@ -1,3 +1,6 @@
+1.2.0.0 2021-02-22
+==================
+- flip order of perms (FileMode) & OpenFileFlags in {open,with}File*
 1.1.1.0 2021-02-21
 ==================
 - export {read,write,append}*Flags
