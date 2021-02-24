@@ -1,3 +1,7 @@
+1.3.1.0 2021-02-24
+==================
+- export chmod, unlink
+
 1.3.0.0 2021-02-24
 ==================
 - {read,write,append}*Binary now works with ByteString not Text

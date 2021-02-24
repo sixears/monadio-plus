@@ -16,6 +16,8 @@ module MonadIO.File
 
   , access, stat, writable
 
+  , chmod, unlink
+  
   , fileWritable, isWritableFile, isWritableDir
 
   , openFile', openFileBinary', openFileUTF8'
@@ -753,8 +755,12 @@ withFileTests =
                 , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
                 ]
 
+----------------------------------------
+
 unlink ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ γ → μ ()
 unlink (review _File_ → fn) = asIOError $ removeLink (fn ⫥ filepath)
+
+----------------------------------------
 
 chmod ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ FileMode → γ → μ ()
 chmod perms (review _File_ → fn) = asIOError $ setFileMode (fn ⫥ filepath) perms
