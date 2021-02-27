@@ -1,3 +1,7 @@
+1.3.2.0 2021-02-27
+==================
+- add with{Read,Write,Append}*{Binary,UTF8}ME
+
 1.3.1.0 2021-02-24
 ==================
 - export chmod, unlink
