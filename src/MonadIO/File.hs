@@ -895,6 +895,7 @@ hClose = asIOError ∘ System.IO.hClose
 data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX
                 | ACCESS_W | ACCESS_RX
                 | ACCESS_X | ACCESS_RW
+  deriving (Eq,Show)
 
 access ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
          AccessMode → ρ → μ (𝕄 𝔹)
