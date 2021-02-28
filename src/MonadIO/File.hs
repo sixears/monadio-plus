@@ -9,7 +9,7 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.File
-  ( System.IO.IOMode(..)
+  ( AccessMode(..), System.IO.IOMode(..)
   , hClose
 
   , devnull
