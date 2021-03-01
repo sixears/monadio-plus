@@ -14,7 +14,7 @@ module MonadIO.File
 
   , devnull
 
-  , access, stat, writable
+  , access, lstat, stat, writable
 
   , chmod, unlink
   
@@ -181,8 +181,10 @@ import Text.Fmt  ( fmt )
 -- unix --------------------------------
 
 import qualified  System.Posix.Files  as  Files
-import System.Posix.Files  ( FileStatus, fileExist, getFileStatus, isDirectory
-                           , removeLink, setFileMode )
+import System.Posix.Files  ( FileStatus, fileExist, getFileStatus
+                           , getSymbolicLinkStatus, isDirectory, removeLink
+                           , setFileMode
+                           )
 import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
                                           , noctty, nonBlock, trunc ),
                              OpenMode( ReadOnly, ReadWrite, WriteOnly )
@@ -257,16 +259,27 @@ fexists'Tests =
 ----------------------------------------
 
 -- | file stat; returns Nothing if file does not exist
-stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
-       ρ → μ (𝕄 FileStatus)
-stat f = do
+_stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
+        (FilePath → IO FileStatus) → ρ → μ (𝕄 FileStatus)
+_stat s fn = do
   -- The fexists' introduces a race-condition - bah - but without it, the
   -- stat may fail with an `InappropriateType` IOException when trying to stat
   -- a file in a "directory" that is in reality a file.  I think that sucks, and
-  -- want to try that like any other non-existent file.
-  fexists' f ≫ \ case
+  -- want to treat that like any other non-existent file.
+  fexists' fn ≫ \ case
     NoFExists → return Nothing
-    FExists   → asIOErrorY ∘ getFileStatus ∘ exterminate $ (f ⫥ filepath)
+    FExists   → asIOErrorY ∘ s ∘ exterminate $ (fn ⫥ filepath)
+
+-- | file stat; returns Nothing if file does not exist
+stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
+       ρ → μ (𝕄 FileStatus)
+stat = _stat getFileStatus
+----------------------------------------
+
+-- | file stat; returns Nothing if file does not exist
+lstat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
+        ρ → μ (𝕄 FileStatus)
+lstat = _stat getSymbolicLinkStatus
 
 ----------
 
