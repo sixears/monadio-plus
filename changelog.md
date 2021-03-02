@@ -1,3 +1,7 @@
+1.3.6.0 2021-03-01
+==================
+- chmod now accepts any AsFilePath, not just FileAs
+
 1.3.5.0 2021-02-28
 ==================
 - add lstat

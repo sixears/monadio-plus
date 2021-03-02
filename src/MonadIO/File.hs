@@ -884,8 +884,9 @@ unlink (review _File_ → fn) = asIOError $ removeLink (fn ⫥ filepath)
 
 ----------------------------------------
 
-chmod ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ FileMode → γ → μ ()
-chmod perms (review _File_ → fn) = asIOError $ setFileMode (fn ⫥ filepath) perms
+chmod ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
+        FileMode → ρ → μ ()
+chmod perms fn = asIOError $ setFileMode (fn ⫥ filepath) perms
 
 ----------------------------------------
 
