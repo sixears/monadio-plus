@@ -125,7 +125,7 @@ import FPath.AbsDir       ( absdir )
 import FPath.AbsFile      ( absfile )
 import FPath.AsFilePath   ( AsFilePath( filepath ) )
 import FPath.AsFilePath'  ( exterminate )
-import FPath.DirLike      ( IsDir )
+import FPath.Dir          ( DirAs )
 import FPath.File         ( FileAs( _File_ ) )
 import FPath.Parent       ( parent )
 
@@ -957,9 +957,8 @@ isWritableFile (review _File_ → f) = stat f ≫ _isWritableFile f
 ----------------------------------------
 
 {- | Is `d` an extant writable directory? -}
-isWritableDir ∷ ∀ α ε μ .
-                (MonadIO μ, IsDir α, AsFilePath α, MonadError ε μ, AsIOError ε)⇒
-                α -> μ (𝕄 𝕋)
+isWritableDir ∷ ∀ γ ε μ . (MonadIO μ, DirAs γ, MonadError ε μ, AsIOError ε) ⇒
+                γ -> μ (𝕄 𝕋)
 
 isWritableDir d =
   let rJust = return ∘ Just
