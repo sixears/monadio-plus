@@ -9,12 +9,12 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.File
-  ( AccessMode(..), System.IO.IOMode(..)
+  ( AccessMode(..), FExists(..), System.IO.IOMode(..)
   , hClose
 
   , devnull
 
-  , access, lstat, stat, writable
+  , access, lstat, stat, writable, fexists, fexists'
 
   , chmod, unlink
   

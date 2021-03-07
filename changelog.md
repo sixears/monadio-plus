@@ -1,3 +1,7 @@
+1.3.7.0 2021-03-07
+==================
+- export fexists, fexists', FExists(..)
+
 1.3.6.1 2021-03-03
 ==================
 - use fpath 1.1, using DirAs( _Dir_) rather than DirLike
