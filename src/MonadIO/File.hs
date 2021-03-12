@@ -14,7 +14,7 @@ module MonadIO.File
 
   , devnull
 
-  , access, lstat, stat, writable, fexists, fexists'
+  , access, lstat, stat, writable, fexists, fexists', lfexists, lfexists'
 
   , chmod, unlink
   
@@ -86,13 +86,14 @@ where
 import qualified  System.IO
 
 import Control.Exception       ( bracket )
-import Control.Monad           ( join, return )
+import Control.Monad           ( Monad, join, return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Bool               ( Bool( False, True ), bool )
 import Data.Either             ( Either)
 import Data.Eq                 ( Eq )
 import Data.Function           ( ($), flip )
-import Data.Maybe              ( Maybe( Just, Nothing ), fromMaybe )
+import Data.Functor            ( fmap )
+import Data.Maybe              ( Maybe( Just, Nothing ), isJust )
 import Data.String             ( String )
 import System.Exit             ( ExitCode )
 import System.IO               ( FilePath, Handle, IO, NewlineMode, TextEncoding
@@ -106,6 +107,8 @@ import Text.Show               ( Show )
 
 -- base-unicode-symbols ----------------
 
+import Data.Bool.Unicode      ( (∧) )
+import Data.Eq.Unicode        ( (≡) )
 import Data.Function.Unicode  ( (∘) )
 import Data.Monoid.Unicode    ( (⊕) )
 
@@ -129,6 +132,10 @@ import FPath.Dir          ( DirAs )
 import FPath.File         ( FileAs( _File_ ) )
 import FPath.Parent       ( parent )
 
+-- fstat -------------------------------
+
+import FStat  ( FStat, FileType( Directory ), ftype, mkfstat )
+
 -- lens --------------------------------
 
 import Control.Lens.Review  ( review )
@@ -142,7 +149,7 @@ import MonadError.IO.Error  ( AsIOError, IOError, squashInappropriateTypeT )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Bool     ( 𝔹 )
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳⊳), (⩺) )
+import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳), (⊳⊳⊳) )
 import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
 import Data.MoreUnicode.Maybe    ( 𝕄 )
 import Data.MoreUnicode.Monad    ( (≫) )
@@ -152,6 +159,10 @@ import Data.MoreUnicode.Text     ( 𝕋 )
 -- mtl ---------------------------------
 
 import Control.Monad.Except  ( ExceptT, MonadError )
+
+-- safe --------------------------------
+
+import Safe  ( lastDef )
 
 -- tasty -------------------------------
 
@@ -181,10 +192,8 @@ import Text.Fmt  ( fmt )
 -- unix --------------------------------
 
 import qualified  System.Posix.Files  as  Files
-import System.Posix.Files  ( FileStatus, fileExist, getFileStatus
-                           , getSymbolicLinkStatus, isDirectory, removeLink
-                           , setFileMode
-                           )
+import System.Posix.Files  ( FileStatus, getFileStatus, getSymbolicLinkStatus
+                           , removeLink, setFileMode )
 import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
                                           , noctty, nonBlock, trunc ),
                              OpenMode( ReadOnly, ReadWrite, WriteOnly )
@@ -196,16 +205,34 @@ import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
 data FExists = FExists | NoFExists
   deriving (Eq,Show)
 
+{- | Does this 𝕄 FStat refer to a directory? -}
+mIsDir ∷ 𝕄 FStat → 𝔹
+mIsDir (fmap ftype → Just Directory) = True
+mIsDir _                             = False
+  
+fexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒ τ → μ FExists
+
+fexists_ ∷ (Monad η, AsFilePath ρ) ⇒ 𝔹 → (ρ → η (𝕄 FStat)) → ρ → η FExists
+fexists_ checkDir g f = bool NoFExists FExists ⊳ do
+  s ← g f
+  if checkDir ∧ '/' ≡ lastDef '\0' (f ⫥ filepath)
+  then return (mIsDir s)
+  else return (isJust s)
+
 {- | Does file exist.  Note that "does /etc/passwd/ exist?", where /etc/passwd
      exists but is a file, will return `NoFExists`; but "does /etc exist?" where
      /etc exists but is a directory will return `FExists`.  See also `fexists'`.
+
+     Symlinks are dereferenced; so dangling symlinks are considered to not
+     exist.
  -}
-fexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒ τ → μ FExists
--- fileExist throws an InappropriateType IOException if you ask about a file
--- in a non-existent directory.  I think that sucks, and should be a simple
--- False (NoFExists)
-fexists f = fromMaybe NoFExists ⩺ squashInappropriateTypeT ∘ asIOError $
-              bool NoFExists FExists ⊳ fileExist (f ⫥ filepath)
+fexists = fexists_ True stat
+
+{- | Like `fexists`; but for symlinks, checks the symlink rather than
+     dereferencing; so dangling symlinks are considered to exist. -}
+lfexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
+           τ → μ FExists
+lfexists = fexists_ True lstat
 
 ----------
 
@@ -233,11 +260,11 @@ fexistsTests =
      accurate.
  -}
 fexists' ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ)⇒ τ → μ FExists
--- fileExist throws an InappropriateType IOException if you ask about a file
--- in a directory that is in reality a file.  I think that sucks, and should be
--- a simple False (NoFExists)
-fexists' f = fromMaybe NoFExists ⩺ squashInappropriateTypeT ∘ asIOError $
-               bool NoFExists FExists ⊳ fileExist (exterminate $ f ⫥ filepath)
+fexists' = fexists_ False stat
+
+lfexists' ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
+            τ → μ FExists
+lfexists' = fexists_ False lstat
 
 ----------
 
@@ -258,27 +285,28 @@ fexists'Tests =
 
 ----------------------------------------
 
--- | file stat; returns Nothing if file does not exist
+{- | File stat; returns Nothing if file does not exist.  Note that `stat`-ing
+     a "directory" that is really a file (e.g., `/etc/passwd/`) will just stat
+     the file (`/etc/passwd` in our example).
+  -}
 _stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
-        (FilePath → IO FileStatus) → ρ → μ (𝕄 FileStatus)
+        (FilePath → IO FileStatus) → ρ → μ (𝕄 FStat)
 _stat s fn = do
-  -- The fexists' introduces a race-condition - bah - but without it, the
-  -- stat may fail with an `InappropriateType` IOException when trying to stat
-  -- a file in a "directory" that is in reality a file.  I think that sucks, and
-  -- want to treat that like any other non-existent file.
-  fexists' fn ≫ \ case
-    NoFExists → return Nothing
-    FExists   → asIOErrorY ∘ s ∘ exterminate $ (fn ⫥ filepath)
+  let fp = exterminate $ fn ⫥ filepath
+   in join ⊳⊳ squashInappropriateTypeT ∘ asIOErrorY ∘ fmap mkfstat ∘ s $ fp
 
 -- | file stat; returns Nothing if file does not exist
 stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
-       ρ → μ (𝕄 FileStatus)
+       ρ → μ (𝕄 FStat)
 stat = _stat getFileStatus
 ----------------------------------------
 
--- | file stat; returns Nothing if file does not exist
+{- | File stat; returns Nothing if file does not exist.  If the file is a
+     symlink, return the stat of the symlink; cf. `stat`, which looks "through"
+     the symlink to the file itself.
+ -}
 lstat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
-        ρ → μ (𝕄 FileStatus)
+        ρ → μ (𝕄 FStat)
 lstat = _stat getSymbolicLinkStatus
 
 ----------
@@ -288,6 +316,7 @@ statTests =
   let testStat expect input f =
         testCase (toString input) $
           f (ѥ @IOError (stat input)) ≫ assertRight (expect @=?)
+      isDirectory = ((Directory ≡) ∘ ftype)
    in testGroup "stat"
                 [ testStat (Just True)  [absdir|/etc/|]        (isDirectory ⊳⊳⊳)
                 , testStat (Just False) [absfile|/etc/passwd|] (isDirectory ⊳⊳⊳)
@@ -933,13 +962,13 @@ writable = access ACCESS_W
 
 {- | Is `f` an extant writable file? -}
 _isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ ,AsIOError ε) ⇒
-                  γ → 𝕄 FileStatus -> μ (𝕄 𝕋)
+                  γ → 𝕄 FStat -> μ (𝕄 𝕋)
 
 _isWritableFile (review _File_ → f) st =
   let rJust = return ∘ Just
    in case st of
         Nothing  → rJust $ [fmt|%T does not exist|] f
-        Just stp → if isDirectory stp
+        Just stp → if Directory ≡ ftype stp
                    then rJust $ [fmt|%T is a directory|] f
                    else writable f ≫ \ case
                           Nothing    → rJust $ [fmt|no such file %T|] f
@@ -964,7 +993,7 @@ isWritableDir d =
   let rJust = return ∘ Just
    in stat d ≫ \ case
         Nothing  → rJust $ [fmt|%T does not exist|] d
-        Just stp → if isDirectory stp
+        Just stp → if Directory ≡ ftype stp 
                    then writable d ≫ \ case
                           Nothing    → rJust $ [fmt|no such directory %T|] d
                           Just True  → return Nothing
