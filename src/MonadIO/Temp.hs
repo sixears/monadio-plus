@@ -54,8 +54,7 @@ import Control.Lens.Review  ( review )
 
 -- monaderror-io -----------------------
 
-import MonadError.IO        ( asIOError )
-import MonadError.IO'       ( asIOErrorT )
+import MonadError.IO        ( asIOError, asIOErrorT )
 import MonadError.IO.Error  ( AsIOError )
 
 -- more-unicode ------------------------
