@@ -6,7 +6,6 @@
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeApplications  #-}
--- {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE UnicodeSyntax     #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -87,27 +86,21 @@ module MonadIO.File
   )
 where
 
-import Debug.Trace  ( trace, traceShow )
-import Prelude  ( error, show, undefined )
+import Prelude  ( error, show )
 
 -- base --------------------------------
 
 import qualified  System.IO
 
-import Control.Monad           ( Monad, (>=>), filterM, forM_, join, return )
+import Control.Monad           ( forM_, join, return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Bool               ( Bool( False, True ), bool )
-import Data.Either             ( Either( Left, Right ) )
+import Data.Bool               ( Bool( False, True ) )
+import Data.Either             ( Either )
 import Data.Eq                 ( Eq )
-import Data.Function           ( ($), (&), const, flip, id )
-import Data.Functor            ( fmap )
-import Data.IORef              ( IORef, newIORef, readIORef )
-import Data.List               ( dropWhileEnd, head, init, intercalate, isSuffixOf, last, or, reverse, scanl, scanr, tail, zip )
-import Data.Maybe              ( Maybe( Just, Nothing ), isJust )
+import Data.Function           ( ($), flip )
+import Data.List               ( isSuffixOf, last, or )
+import Data.Maybe              ( Maybe( Just, Nothing ) )
 import Data.String             ( String )
-import Data.Tuple              ( fst )
-import GHC.Exts                ( toList )
-import System.Environment      ( getProgName )
 import System.Exit             ( ExitCode )
 import System.IO               ( FilePath, Handle, IO, NewlineMode, TextEncoding
                                , IOMode( AppendMode, ReadMode, ReadWriteMode
@@ -115,13 +108,11 @@ import System.IO               ( FilePath, Handle, IO, NewlineMode, TextEncoding
                                , char8, hIsEOF, hSetEncoding, hSetNewlineMode
                                , nativeNewlineMode, noNewlineTranslation, utf8
                                )
-import System.IO.Error         ( illegalOperationErrorType, mkIOError )
 import System.Posix.Types      ( FileMode )
 import Text.Show               ( Show )
 
 -- base-unicode-symbols ----------------
 
-import Data.Bool.Unicode      ( (∧), (∨) )
 import Data.Eq.Unicode        ( (≡) )
 import Data.Function.Unicode  ( (∘) )
 import Data.List.Unicode      ( (∈) )
@@ -133,96 +124,72 @@ import qualified Data.ByteString  as  BS
 
 import Data.ByteString  ( ByteString )
 
--- containers --------------------------
-
-import Data.Sequence  ( Seq( Empty ), breakr, fromList )
-
 -- data-textual ------------------------
 
-import Data.Textual  ( Printable, toString, toText )
+import Data.Textual  ( toString )
 
 -- directory ---------------------------
 
 import System.Directory  ( createDirectory, removePathForcibly
-                         , setCurrentDirectory, withCurrentDirectory )
+                         , withCurrentDirectory )
 
 -- exceptions --------------------------
 
-import Control.Monad.Catch  ( MonadMask, bracket, onException )
-
--- filepath ----------------------------
-
-import System.FilePath  ( FilePath, (</>), splitPath )
+import Control.Monad.Catch  ( bracket )
 
 -- fpath -------------------------------
 
 import FPath.Abs               ( Abs( AbsD, AbsF ) )
-import FPath.AbsDir            ( AbsDir, NonRootAbsDir, absdir, root )
-import FPath.AbsFile           ( AbsFile, absfile, absfileT )
+import FPath.AbsDir            ( AbsDir, absdir, root )
+import FPath.AbsFile           ( absfile )
 import FPath.AppendableFPath   ( (⫻) )
 import FPath.AsFilePath        ( AsFilePath( filepath ) )
 import FPath.AsFilePath'       ( exterminate )
-import FPath.Basename          ( basename )
-import FPath.Dir               ( Dir, DirAs( _Dir_ ) )
-import FPath.Dirname           ( dirname )
-import FPath.Error.FPathError  ( AsFPathError, FPathIOError
-                               , __FPathEmptyE__, __FPathNotAFileE__ )
-import FPath.File              ( AsFile( _File ), File( FileR )
-                               , FileAs( _File_ ) )
-import FPath.FileTypeC         ( FileTypeC )
-import FPath.FPath             ( FPath( FAbsD, FAbsF, FRelD, FRelF ) )
+import FPath.Dir               ( DirAs( _Dir_ ) )
+import FPath.Error.FPathError  ( AsFPathError, FPathIOError )
+import FPath.File              ( FileAs( _File_ ) )
 import FPath.Parent            ( parent )
-import FPath.Parseable         ( Parseable, parse )
-import FPath.Rel               ( AsRel( _Rel ), Rel )
-import FPath.Rel'              ( RelAs( _Rel_ ) )
-import FPath.RelDir            ( AsRelDir( _RelDir ), RelDir, reldir )
-import FPath.RelFile           ( AsRelFile( _RelFile ), RelFile, relfile )
+import FPath.RelDir            ( reldir )
+import FPath.RelFile           ( relfile )
 
 -- fstat -------------------------------
 
-import FStat  ( FStat, FileType( Directory, SymbolicLink ), ftype, mkfstat )
+import FStat  ( FStat, FileType( Directory, SymbolicLink ), ftype )
 
 -- lens --------------------------------
 
-import Control.Lens.Prism   ( Prism', prism )
-import Control.Lens.Review  ( (#), review )
+import Control.Lens.Review  ( review )
 
 import qualified System.FilePath.Lens
 
 -- monadio-error -----------------------
 
-import MonadError           ( ѥ, splitMError )
+import MonadError           ( ѥ )
 import MonadError.IO        ( ӝ, asIOError, asIOErrorY )
-import MonadError.IO'       ( asIOErrorT )
-import MonadError.IO.Error  ( AsIOError, IOError, (~~)
-                            , _IOErr, squashInappropriateTypeT )
+import MonadError.IO.Error  ( AsIOError, IOError )
 
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Bool     ( 𝔹 )
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳), (⊳⊳⊳), (⩺) )
-import Data.MoreUnicode.Lens     ( (⊣), (⫥), (⊢) )
+import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
+import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
 import Data.MoreUnicode.Maybe    ( 𝕄 )
-import Data.MoreUnicode.Monad    ( (≫), (⪼) )
+import Data.MoreUnicode.Monad    ( (≫) )
 import Data.MoreUnicode.Natural  ( ℕ )
 import Data.MoreUnicode.String   ( 𝕊 )
 import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( ExceptT, MonadError, throwError )
+import Control.Monad.Except  ( ExceptT, MonadError )
 
 -- safe --------------------------------
 
-import Safe  ( headMay, lastDef, lastMay )
-
--- split -------------------------------
-
-import Data.List.Split  ( wordsBy )
+import Safe  ( headMay )
 
 -- tasty -------------------------------
 
-import Test.Tasty  ( TestTree, testGroup, withResource )
+import Test.Tasty  ( TestName, TestTree, testGroup )
 
 -- tasty-hunit -------------------------
 
@@ -231,21 +198,13 @@ import Test.Tasty.HUnit  ( Assertion, (@=?), testCase )
 -- tasty-plus --------------------------
 
 import TastyPlus  ( (≟), assertIsLeft, assertRight, runTestsP, runTestsReplay
-                  , runTestTree )
-
--- temporary ---------------------------
-
-import qualified System.IO.Temp
-
-import System.IO.Temp  ( createTempDirectory, getCanonicalTemporaryDirectory
-                       , withSystemTempDirectory, withTempDirectory
-                       )
+                  , runTestTree, withResourceCleanup )
 
 -- text --------------------------------
 
 import qualified  Data.Text.IO  as  TextIO
 
-import Data.Text                 ( Text, drop, length, pack )
+import Data.Text                 ( drop, length, pack )
 import Data.Text.Encoding        ( decodeUtf8With )
 import Data.Text.Encoding.Error  ( lenientDecode )
 
@@ -260,8 +219,7 @@ import Data.Time.Clock  ( getCurrentTime )
 -- unix --------------------------------
 
 import qualified  System.Posix.Files  as  Files
-import System.Posix.Files  ( FileStatus, fileExist, getFileStatus, getSymbolicLinkStatus
-                           , readSymbolicLink, removeLink, setFileMode )
+import System.Posix.Files  ( readSymbolicLink, removeLink, setFileMode )
 import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
                                           , noctty, nonBlock, trunc ),
                              OpenMode( ReadOnly, ReadWrite, WriteOnly )
@@ -273,9 +231,12 @@ import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
 ------------------------------------------------------------
 
 import MonadIO.Base   ( hClose )
-import MonadIO.FPath  ( getCwd, pResolve, pResolveDir )
+import MonadIO.FPath  ( pResolve, pResolveDir )
 import MonadIO.FStat  ( lstat, stat )
-import MonadIO.Temp   ( mkTempDir, withTempDir'' )
+import MonadIO.Temp   ( mkTempDir )
+
+import MonadIO.T.ReadlinkTestCases  ( readExp, readlinkTestCases, resolveExp
+                                    , slName, slTarget )
 
 --------------------------------------------------------------------------------
 
@@ -1041,148 +1002,17 @@ nuke ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath 
        ρ → μ ()
 nuke (review filepath → fp) = asIOError $ removePathForcibly fp
 
-instance FileAs RelFile where
-  _File_ = prism FileR (\ case (FileR r) → Right r; f → Left f)
-
-{- | For complex tests that need an IO setup; where having acquired the
-     resource, the setup may fail; regular `withResource` doesn't clean that up
-     (since the acquire step throws an exception, the return value is never seen
-     and so cannot be passed to the release); this version splits acquisition
-     and setup.
-
-     If acquisition fails, there should be nothing to release.
-     But if setup fails, the release is called (though of course no tests are
-     run).
-     If the setup succeeds, tests are run, and cleanup is called.
- -}
-withResourceCleanup ∷ IO α → (α → IO ()) → (α → IO ()) → (IO α → TestTree)
-                    → TestTree
-withResourceCleanup acquire setup release test =
-  let -- safely acquire and run setup; if setup throws an IOException, release
-      -- acquireAndSetup ∷ IO α
-      acquireAndSetup = acquire ≫ \ resource → do
-        onException (setup resource) (release resource)
-        return resource
-   in withResource acquireAndSetup release test
-
-readlinkTests ∷ TestTree
-readlinkTests =
-  let absD = const ∘ AbsD
-      absF = const ∘ AbsF
-      relD ∷ RelDir → AbsDir → Abs
-      relD f = \ t → AbsD $ t ⫻ f
-      relDp ∷ RelDir → AbsDir → Abs
-      relDp d = \ t → AbsD $ (t ⊣ dirname) ⫻ d
-      relF ∷ RelFile → AbsDir → Abs
-      relF f = \ t → AbsF $ t ⫻ f
-      relFp ∷ RelFile → AbsDir → Abs
-      relFp f = \ t → AbsF $ (t ⊣ dirname) ⫻ f
-      testlinks ∷ [(FilePath,FilePath,AbsDir → Abs)]
-      testlinks =
-        [ -- name of symlink ⫽ symlink target ⫽ singly-resolved target
-          ("dangle-relfile" , "nonesuch"     , relF [relfile|nonesuch|])
-        , ("dangle-reldir"  , "nonesuch/"    , relD [reldir|nonesuch/|])
-        , ("dangle-absfile" , "/nonesuch"    , absF [absfile|/nonesuch|])
-        , ("dangle-absdir"  , "/nonesuch/"   , absD [absdir|/nonesuch/|])
-        , ("slash"          , "/"            , absD root)
-        , ("slashes"        , "///"          , absD root)
-        , ("etc"            , "/etc/"        , absD [absdir|/etc/|])
-        , ("etcf"           , "/etc"         , absF [absfile|/etc|])
-        , ("passwd"         , "/etc/passwd"  , absF [absfile|/etc/passwd|])
-        , ("passwd-dir"     , "/etc/passwd/" , absD [absdir|/etc/passwd/|])
-        , ("parent-dangle"  , "../nonesuch"  , relFp [relfile|nonesuch|])
-        -- this results in a dir, because '.' is always a dir
-        , ("this"           , "."            , relD [reldir|./|])
-        , ("this-dir"       , "./"           , relD [reldir|./|])
-        , ("this-dirs"      , ".///"         , relD [reldir|./|])
-        , ("this-this-this" , "././."        , relD [reldir|./|])
-        -- this results in a dir, because '..' is always a dir
-        , ("parent"         , ".."           , relDp [reldir|./|])
-        , ("parent-dir"     , "../"          , relDp [reldir|./|])
-        , ("this-parent"    , "./.."         , relDp [reldir|./|])
-        , ("parent-this"    , "../."         , relDp [reldir|./|])
-        , ("plainfile"      , "plain"        , relF  [relfile|plain|])
-        , ("dir"            , "directory"    , relF  [relfile|directory|])
-        , ("dir-dir"        , "directory/"   , relD  [reldir|directory/|])
-
-        , ("dr-prnt-dr" , "dir/../dir/"             , relD [reldir|directory/|])
-        , ("dr-prnt-dy" , "dir/../directory/"       , relD [reldir|directory/|])
-        , ("dy-prnt-dr" , "directory/../dir/"       , relD [reldir|directory/|])
-        , ("dy-prnt-dy" , "directory/../directory/" , relD [reldir|directory/|])
-        
-        , ("dr-prnt-dr-p"   , "dir/../dir/p" , relF  [relfile|directory/p|])
-        , ("dy-prnt-dr-p"   , "directory/../dir/p" ,
-           relF  [relfile|directory/p|])
-        , ("dr-prnt-dy-p"   , "dir/../directory/p" ,
-           relF  [relfile|directory/p|])
-        , ("dy-prnt-dy-p"   , "directory/../directory/p" ,
-           relF  [relfile|directory/p|])
-        ]
-
-      mkTempDir_ ∷ MonadIO μ ⇒ μ AbsDir
-      mkTempDir_ = ӝ $ mkTempDir @FPathIOError
-
-      {- | Write a file, perms 0700, throw IOException on error.  -}
-      writeUTF8 ∷ FileAs γ ⇒ γ → 𝕋 → IO ()
-      writeUTF8 fn = ӝ ∘ writeFileUTF8 @IOError (Just 0o700) fn
-
-      {- | Write a file with the current time, throw IOException on error -}
-      writeTime ∷ FileAs γ ⇒ γ → IO ()
-      writeTime fn = (pack ∘ show ⊳ getCurrentTime) ≫ writeUTF8 fn
-
-      {- | Write links, also a plain file & a dir, into the temp dir for
-           testing. -}
-      populateTemp ∷ (MonadIO μ, MonadError FPathIOError μ) ⇒ AbsDir → μ ()
-      populateTemp d = liftIO $ do
-          withCurrentDirectory (d ⫥ filepath) $ do
-            -- create a plain file 'plain', with current time as contents
-            writeTime [relfile|plain|]
-            -- create a directory, 'directory'
-            ӝ $ mkdir @IOError @AbsDir (d ⫻ [reldir|directory/|])
-            -- create all the symlinks cited in `testlinks`
-            forM_ testlinks (\ (from,to,_) → Files.createSymbolicLink to from)
-
-      -- We factor this out so it can be run on exception during creation;
-      -- `withResource` does not run the resource-close step if there was an
-      -- IOException during the resource-acquisition step
-      delTemp ∷ AbsDir → IO ()
-      delTemp = ӝ ∘ nuke @FPathIOError
-    in withResourceCleanup mkTempDir_ (ӝ ∘ populateTemp) delTemp $
-      \ tmpdir →
-      let readlink' ∷ 𝕊 → IO (Either FPathIOError Abs)
-          readlink' = ѥ ∘ readlink
-          check ∷ 𝕊 → (AbsDir → Abs) → TestTree
-          check fn exp = let path t = toString t ⊕ "/" ⊕ fn
-                          in testCase fn $ tmpdir ≫ \ t →
-                               readlink' (path t) ≫ assertRight (exp t ≟)
-       in testGroup "readlinkTests"
-                    [ check name fpatht | (name,_,fpatht) ← testlinks ]
-
--- note that withTempDirectory will give us a relative dir if passed a relative
--- dir (that exists and is usable)
-
 ----------------------------------------
-
-{- | Perform IO within a directory, with declared errors. -}
-_inDir ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, Printable τ) ⇒ τ → IO α → μ α
-_inDir (toString → d) io =
-  -- ensure that the path is attached to the error
-  (ѥ ∘ asIOError $ withCurrentDirectory d io) ≫ \ case
-    Left e' → join $ throwError (e' ~~ d)-- (ioEWithPath d e')
-    Right r → return r
-
-{- | like `inDirT`, but takes IO that already throws some error(s). -}
-_inDirT ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, Printable τ) ⇒
-          τ → ExceptT ε IO α → μ α
-_inDirT d io = join $ _inDir d (ѥ io)
 
 -- This has to return an absolute path, as the relative path might include
 -- many '..' that can't be represented by FPath.  So we resolve it.
-{- | Read a symlink, return the absolute path to the referent. -}
+{- | Read a symlink, return the absolute path to the referent.  Note that as
+     with readlink(2); a directory (any `filepath` ending in a '/'; including
+     those from an `FPath.{Abs,Rel,}Dir` type) will give rise to an EINVAL. -}
 readlink ∷ ∀ ε γ μ .
-            (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-             AsFilePath γ) ⇒
-            γ → μ Abs
+           (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+            AsFilePath γ) ⇒
+           γ → μ Abs
 readlink (review filepath → fp) = do
   r ← asIOError $ readSymbolicLink fp
   case headMay r of
@@ -1204,45 +1034,85 @@ readlink (review filepath → fp) = do
                           then AbsD ⊳ pResolveDir d r
                           else AbsF ⊳ pResolveDir d r
 
+----------
+
+_readlinkTests ∷ TestName → (𝕊 → IO (Either FPathIOError Abs)) → (α → FilePath)
+               → (α → FilePath) → (α → AbsDir → Abs) → [α] → TestTree
+_readlinkTests name f getName getTarget getExp ts =
+  let mkTempDir_ ∷ MonadIO μ ⇒ μ AbsDir
+      mkTempDir_ = ӝ $ mkTempDir @FPathIOError
+
+      {- | Write a file, perms 0700, throw IOException on error.  -}
+      writeUTF8 ∷ FileAs γ ⇒ γ → 𝕋 → IO ()
+      writeUTF8 fn = ӝ ∘ writeFileUTF8 @IOError (Just 0o700) fn
+
+      {- | Write a file with the current time, throw IOException on error -}
+      writeTime ∷ FileAs γ ⇒ γ → IO ()
+      writeTime fn = (pack ∘ show ⊳ getCurrentTime) ≫ writeUTF8 fn
+
+      {- | Write links, also a plain file & a dir, into the temp dir for
+           testing. -}
+      populateTemp ∷ (MonadIO μ, MonadError FPathIOError μ) ⇒ AbsDir → μ ()
+      populateTemp d = liftIO $ do
+          withCurrentDirectory (d ⫥ filepath) $ do
+            -- create a plain file 'plain', with current time as contents
+            writeTime [relfile|plain|]
+            -- create a directory, 'directory'
+            ӝ $ mkdir @IOError @AbsDir (d ⫻ [reldir|directory/|])
+            -- create all the symlinks cited in `testlinks`
+            forM_ ts (\ t → Files.createSymbolicLink (getTarget t) (getName t))
+
+      -- We factor this out so it can be run on exception during creation;
+      -- `withResource` does not run the resource-close step if there was an
+      -- IOException during the resource-acquisition step
+      delTemp ∷ AbsDir → IO ()
+      delTemp = ӝ ∘ nuke @FPathIOError
+    in withResourceCleanup mkTempDir_ (ӝ ∘ populateTemp) delTemp $
+      \ tmpdir →
+      let check ∷ 𝕊 → (AbsDir → Abs) → TestTree
+          check fn exp = let path t = toString t ⊕ "/" ⊕ fn
+                          in testCase fn $ tmpdir ≫ \ t →
+                               f (path t) ≫ assertRight (exp t ≟)
+       in testGroup name [ check (getName t) (getExp t) | t ← ts ]
+
+----------
+
+readlinkTests ∷ TestTree
+readlinkTests =
+  _readlinkTests "readlink" (ѥ ∘ readlink) slName slTarget readExp
+                 readlinkTestCases
 
 --------------------
 
 {- | Recursively read a symbolic link, until it is a symbolic link no more.
-     Anything other than a symbolic link is immediately returned intact
-     (including non-existent files).  A symbolic link is deferenced, and the
-     result re-examined.
+     Anything other than a (readable) symbolic link is immediately returned
+     intact (including non-existent files).  A symbolic link is deferenced, and
+     the result re-examined.
  -}
--- return nonexistent FilePath if any part does not exist: this is needed
--- because any part along the path might not exist; and if so, it may be
--- pointed at by a path, e.g., "./../foo"; which cannot be represented by FPath
-{-
-resolvelink ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-               AsFilePath γ, Printable γ) ⇒
-              γ → μ FPath
-resolvelink f =
-  lstat f ≫ \ case
-    Just (ftype → SymbolicLink) → do -- readlink f ≫ resolvelink
-      r ← readlink f
-      case r of
-        FRelF rf → parse f ≫ \ case
---                     FAbsF af → error $ show (toString $ af ⊣ dirname,toString rf)
-                     FAbsF af → error $ show (toText $ FAbsF (af ⊣ dirname ⫻ rf))
-                     _        → error $ "wrong type"
-        _        → resolvelink r
--}
-{-
-    _                           → do
-      r ← readlink f
-      case r of
-        FRelF rf → error $ show rf
-        _        → resolvelink r
--}
+resolvelink ∷ ∀ ε γ μ .
+            (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+             AsFilePath γ) ⇒
+            γ → μ Abs
+resolvelink fp = do
+  r ← readlink fp
+  ftype ⊳⊳ lstat r ≫ \ case
+    Just SymbolicLink → resolvelink r
+    _                 → return r
+
+----------
+
+resolvelinkTests ∷ TestTree
+resolvelinkTests = _readlinkTests "resolvelink" (ѥ ∘ resolvelink) slName
+                   slTarget resolveExp readlinkTestCases
+
 
 ----------------------------------------
 
 tests ∷ TestTree
 tests = testGroup "MonadIO.File" [ isWritableDirTests, fileWritableTests
-                                 , withFileTests, readlinkTests ]
+                                 , withFileTests, readlinkTests
+                                 , resolvelinkTests
+                                 ]
 
 --------------------
 

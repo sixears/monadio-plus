@@ -1,9 +1,18 @@
+{-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE TypeFamilies  #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module FPath.FileTypeC
   ( FileTypeC(..) )
 where
+
+-- base --------------------------------
+
+import Data.Either  ( Either( Left, Right ) )
+
+-- lens --------------------------------
+
+import Control.Lens.Prism  ( prism )
 
 ------------------------------------------------------------
 --                     local imports                      --
@@ -13,7 +22,7 @@ import FPath.Abs      ( Abs )
 import FPath.AbsDir   ( AbsDir, NonRootAbsDir )
 import FPath.AbsFile  ( AbsFile )
 import FPath.Dir      ( Dir )
-import FPath.File     ( File )
+import FPath.File     ( File( FileR ), FileAs( _File_ ) )
 import FPath.FPath    ( FPath )
 import FPath.Rel      ( Rel )
 import FPath.RelDir   ( RelDir )
@@ -54,5 +63,8 @@ instance FileTypeC Rel where
 
 instance FileTypeC FPath where
   type FileType FPath = File
+
+instance FileAs RelFile where
+  _File_ = prism FileR (\ case (FileR r) → Right r; f → Left f)
 
 -- that's all, folks! ----------------------------------------------------------

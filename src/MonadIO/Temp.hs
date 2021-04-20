@@ -3,7 +3,8 @@
 {-# LANGUAGE ViewPatterns  #-}
 
 module MonadIO.Temp
-  ( mkTempDir, withTempDir'' )
+  ( mkTempDir, withTempDir'', withTempDirCD, withTempDirCD'
+  , writeTempFileBinary, writeTempFileUTF8 )
 where
 
 -- base --------------------------------
@@ -40,7 +41,7 @@ import Control.Monad.Catch  ( MonadMask )
 import FPath.AbsDir            ( AbsDir )
 import FPath.AbsFile           ( AbsFile )
 import FPath.AsFilePath        ( filepath )
-import FPath.Dir               ( Dir, DirAs( _Dir_ ) )
+import FPath.Dir               ( DirAs( _Dir_ ) )
 import FPath.Error.FPathError  ( AsFPathError )
 import FPath.FileTypeC         ( FileTypeC( FileType ) )
 import FPath.Rel'              ( RelAs( _Rel_ ) )
@@ -77,7 +78,7 @@ import System.IO.Temp  ( createTempDirectory, getCanonicalTemporaryDirectory
 
 import qualified  Data.Text.IO  as  TextIO
 
-import Data.Text  ( Text, drop, length, pack )
+import Data.Text  ( Text )
 
 ------------------------------------------------------------
 --                     local imports                      --
@@ -149,15 +150,13 @@ withTempFile io = progNamePrefix ≫ \ p → withTempFile' p io
 _parseD ∷ (Parseable χ, AsFPathError ε, MonadError ε η) ⇒ FilePath → η χ
 _parseD = parse ∘ (⊕ "/") ∘ dropWhileEnd (≡ '/')
 
-parseDir ∷ (AsFPathError ε, MonadError ε η) ⇒ FilePath → η Dir
--- parseDir = parse ∘ (⊕ "/") ∘ dropWhileEnd (≡ '/')
-parseDir = _parseD @Dir
-
 {- | Perform some IO with a given temporary directory, created within some given
      dir; the temporary dir is removed once IO is complete.  The directory
      created is passed into the IO as an `AbsDir`.  The directory name is
      prefixed by some relative name.
  -}
+-- note that withTempDirectory will give us a relative dir if passed a relative
+-- dir (that exists and is usable)
 withTempDir'' ∷ (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
                  MonadError ε μ, DirAs δ, Parseable δ, RelAs ρ) ⇒
                 δ → ρ → (δ → ExceptT ε IO α) → μ α

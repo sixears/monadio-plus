@@ -17,15 +17,12 @@ module MonadIO.FPath
   )
 where
 
-import Debug.Trace  ( trace, traceShow )
-
 -- base --------------------------------
 
 import qualified  Data.List
 
 import Control.Monad           ( filterM, join, return )
 import Control.Monad.IO.Class  ( MonadIO )
-import Data.Bool               ( Bool )
 import Data.Either             ( Either( Left, Right ) )
 import Data.Functor            ( fmap )
 import Data.Function           ( ($), const )
@@ -121,13 +118,12 @@ import Data.Text  ( Text, last )
 -- unix --------------------------------
 
 import System.Posix.Directory  ( changeWorkingDirectory, getWorkingDirectory )
-import System.Posix.Files      ( fileExist )
 
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.FStat  ( FExists( FExists ), fexists, fexists' )
+import MonadIO.FStat  ( FExists( FExists ), fexists )
 
 --------------------------------------------------------------------------------
 
@@ -225,17 +221,14 @@ splitPointsTests =
  -}
 resolve ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒
           AbsDir → FilePath → μ (FilePath, FilePath)
-resolve d fp =
+resolve d =
   let -- prepend `d`, note this is a no-op for input abs functions
       prepend ∷ FilePath → FilePath
       prepend = (filepath # d </>)
-      fexist ∷ (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒ FilePath → μ Bool
-      fexist  = asIOError ∘ fileExist
       -- Given an AbsDir, `resolve` must resolve to *something* valid, since the
       -- top of an AbsDir is the root dir, and that always exists.
---   in head ⩺ filterM (fexist ∘ fst) ∘ reverse ∘ splitPoints ∘ prepend
---   in head ⩺ filterM ((FExists ≡) ∘ fexists ∘ fst) ∘ reverse ∘ splitPoints ∘ prepend
-   in traceShow ("resolve", d,fp,(reverse ∘ splitPoints ∘ prepend) fp) $ (head ⩺ filterM ((fmap (FExists ≡)) ∘ fexists ∘ fst) ∘ reverse ∘ splitPoints ∘ prepend) fp
+      fex = fmap (FExists ≡) ∘ fexists ∘ fst
+   in head ⩺ filterM fex ∘ reverse ∘ splitPoints ∘ prepend
 
 ------------------------------------------------------------
 
@@ -267,16 +260,16 @@ instance PResolvable AbsDir where
   pResolveDir ∷ (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
                  MonadIO μ) ⇒
                 AbsDir → τ → μ AbsDir
-  pResolveDir d (toString → p) = traceShow ("_pResolveDir", d, p) $ trace "pResolveDir⫽AbsDir" $ do
-    (extant,non_extant) ← trace "resolved" $ resolve d p
-    d' ← traceShow ("_inDirT") $ _inDirT extant getCwd
+  pResolveDir d (toString → p) = do
+    (extant,non_extant) ← resolve d p
+    d' ← _inDirT extant getCwd
     let -- add a trailing / so reldir parses it
         toDir ∷ FilePath → FilePath
         toDir "" = "./"
         toDir t  = case Data.List.last t of -- last is safe, t is non-empty
                      '/' → t
                      _   → t ⊕ "/"
-    p' ← traceShow ("-> parse", non_extant, toDir non_extant) $ parse @RelDir (toDir non_extant)
+    p' ← parse @RelDir (toDir non_extant)
     return $ d' ⫻ p'
 
 ----------
@@ -285,8 +278,6 @@ pResolveAbsDirTests ∷ TestTree
 pResolveAbsDirTests =
   let tName   = "pResolveTests.AbsDir"
       inTmp   = inSystemTempDirectory tName
-      withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
-      withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
 
       pResolve_ ∷ Text → IO (Either FPathIOError AbsDir)
       pResolve_ = ѥ ∘ pResolve
@@ -336,7 +327,6 @@ pResolveAbsDirTests =
 pResolveDirAbsDirTests ∷ TestTree
 pResolveDirAbsDirTests =
   let tName   = "pResolveDirTests.AbsDir"
-      inTmp   = inSystemTempDirectory tName
       withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
       withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
 

@@ -10,10 +10,8 @@ where
 
 -- base --------------------------------
 
-import qualified  System.IO
-
-import Control.Monad           ( Monad, (>=>), filterM, forM_, join, return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
+import Control.Monad           ( Monad, join, return )
+import Control.Monad.IO.Class  ( MonadIO )
 import Data.Bool               ( Bool( False, True ), bool )
 import Data.Eq                 ( Eq )
 import Data.Function           ( ($) )
@@ -25,72 +23,66 @@ import Text.Show               ( Show )
 
 -- base-unicode-symbols ----------------
 
-import Data.Bool.Unicode      ( (∧), (∨) )
+import Data.Bool.Unicode      ( (∧) )
 import Data.Eq.Unicode        ( (≡) )
 import Data.Function.Unicode  ( (∘) )
 
 -- data-textual ------------------------
 
-import Data.Textual  ( Printable, toString, toText )
+import Data.Textual  ( toString )
 
 -- fpath -------------------------------
 
-import FPath.Abs               ( Abs( AbsD, AbsF ) )
-import FPath.AbsDir            ( AbsDir, NonRootAbsDir, absdir, root )
-import FPath.AbsFile           ( AbsFile, absfile, absfileT )
-import FPath.AppendableFPath   ( (⫻) )
-import FPath.AsFilePath        ( AsFilePath( filepath ) )
-import FPath.AsFilePath'       ( exterminate )
+import FPath.AbsDir       ( absdir )
+import FPath.AbsFile      ( absfile )
+import FPath.AsFilePath   ( AsFilePath( filepath ) )
+import FPath.AsFilePath'  ( exterminate )
 
 -- fstat -------------------------------
 
-import FStat  ( FStat, FileType( Directory, SymbolicLink ), ftype, mkfstat )
+import FStat  ( FStat, FileType( Directory ), ftype, mkfstat )
 
 -- monadio-error -----------------------
 
-import MonadError           ( ѥ, splitMError )
-import MonadError.IO        ( ӝ, asIOError, asIOErrorY )
-import MonadError.IO.Error  ( AsIOError, IOError, (~~)
-                            , _IOErr, squashInappropriateTypeT )
+import MonadError           ( ѥ )
+import MonadError.IO        ( asIOErrorY )
+import MonadError.IO.Error  ( AsIOError, IOError, squashInappropriateTypeT )
 
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Bool     ( 𝔹 )
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳), (⊳⊳⊳), (⩺) )
-import Data.MoreUnicode.Lens     ( (⊣), (⫥), (⊢) )
+import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳), (⊳⊳⊳) )
+import Data.MoreUnicode.Lens     ( (⫥) )
 import Data.MoreUnicode.Maybe    ( 𝕄 )
-import Data.MoreUnicode.Monad    ( (≫), (⪼) )
+import Data.MoreUnicode.Monad    ( (≫) )
 import Data.MoreUnicode.Natural  ( ℕ )
 import Data.MoreUnicode.String   ( 𝕊 )
-import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( ExceptT, MonadError, throwError )
+import Control.Monad.Except  ( MonadError )
 
 -- tasty -------------------------------
 
-import Test.Tasty  ( TestTree, testGroup, withResource )
+import Test.Tasty  ( TestTree, testGroup )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( Assertion, (@=?), testCase )
+import Test.Tasty.HUnit  ( (@=?), testCase )
 
 -- tasty-plus --------------------------
 
-import TastyPlus  ( (≟), assertIsLeft, assertRight, runTestsP, runTestsReplay
+import TastyPlus  ( assertRight, runTestsP, runTestsReplay
                   , runTestTree )
 
 -- safe --------------------------------
 
-import Safe  ( headMay, lastDef, lastMay )
+import Safe  ( lastDef )
 
 -- unix --------------------------------
 
-import System.Posix.Files  ( FileStatus, fileExist, getFileStatus
-                           , getSymbolicLinkStatus, readSymbolicLink, removeLink
-                           , setFileMode
-                           )
+import System.Posix.Files  ( FileStatus, getFileStatus, getSymbolicLinkStatus )
+
 --------------------------------------------------------------------------------
 
 data FExists = FExists | NoFExists
