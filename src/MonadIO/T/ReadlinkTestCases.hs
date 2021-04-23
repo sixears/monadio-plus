@@ -35,7 +35,7 @@ import Data.MoreUnicode.Lens     ( (⊣) )
 data ReadlinkTestCase = ReadlinkTestCase { -- name of the symlink relative to
                                            -- some dir; the test prep should
                                            -- create this symlink
-                                           slName     ∷ FilePath
+                                           slName     ∷ RelFile
                                          , -- target of the symlink; the test
                                            -- prep should create the symlink
                                            -- `name` pointing to this
@@ -69,45 +69,45 @@ readlinkTestCases =
    in ( -- for each of the below, the
         -- fully-resolved target ≡ the single-resolved target
        (\ (a,b,c) → ReadlinkTestCase a b c c) ⊳
-       [ ("dangle-relfile" , "nonesuch"     , relF [relfile|nonesuch|])
-       , ("dangle-reldir"  , "nonesuch/"    , relD [reldir|nonesuch/|])
-       , ("dangle-absfile" , "/nonesuch"    , absF [absfile|/nonesuch|])
-       , ("dangle-absdir"  , "/nonesuch/"   , absD [absdir|/nonesuch/|])
-       , ("slash"          , "/"            , absD root)
-       , ("slashes"        , "///"          , absD root)
-       , ("etc"            , "/etc/"        , absD [absdir|/etc/|])
-       , ("etcf"           , "/etc"         , absF [absfile|/etc|])
-       , ("passwd"         , "/etc/passwd"  , absF [absfile|/etc/passwd|])
-       , ("passwd-dir"     , "/etc/passwd/" , absD [absdir|/etc/passwd/|])
-       , ("parent-dangle"  , "../nonesuch"  , relFp [relfile|nonesuch|])
+       [ ([relfile|dangle-relfile|] , "nonesuch"     , relF [relfile|nonesuch|])
+       , ([relfile|dangle-reldir|]  , "nonesuch/"    , relD [reldir|nonesuch/|])
+       , ([relfile|dangle-absfile|] , "/nonesuch"    , absF [absfile|/nonesuch|])
+       , ([relfile|dangle-absdir|]  , "/nonesuch/"   , absD [absdir|/nonesuch/|])
+       , ([relfile|slash|]          , "/"            , absD root)
+       , ([relfile|slashes|]        , "///"          , absD root)
+       , ([relfile|etc|]            , "/etc/"        , absD [absdir|/etc/|])
+       , ([relfile|etcf|]           , "/etc"         , absF [absfile|/etc|])
+       , ([relfile|passwd|]         , "/etc/passwd"  , absF [absfile|/etc/passwd|])
+       , ([relfile|passwd-dir|]     , "/etc/passwd/" , absD [absdir|/etc/passwd/|])
+       , ([relfile|parent-dangle|]  , "../nonesuch"  , relFp [relfile|nonesuch|])
        -- this results in a dir, because '.' is always a dir
-       , ("this"           , "."            , relD [reldir|./|])
-       , ("this-dir"       , "./"           , relD [reldir|./|])
-       , ("this-dirs"      , ".///"         , relD [reldir|./|])
-       , ("this-this-this" , "././."        , relD [reldir|./|])
+       , ([relfile|this|]           , "."            , relD [reldir|./|])
+       , ([relfile|this-dir|]       , "./"           , relD [reldir|./|])
+       , ([relfile|this-dirs|]      , ".///"         , relD [reldir|./|])
+       , ([relfile|this-this-this|] , "././."        , relD [reldir|./|])
        -- this results in a dir, because '..' is always a dir
-       , ("parent"         , ".."           , relDp [reldir|./|])
-       , ("parent-dir"     , "../"          , relDp [reldir|./|])
-       , ("this-parent"    , "./.."         , relDp [reldir|./|])
-       , ("parent-this"    , "../."         , relDp [reldir|./|])
-       , ("plainfile"      , "plain"        , relF  [relfile|plain|])
-       , ("dir"            , "directory"    , relF  [relfile|directory|])
-       , ("dir-dir"        , "directory/"   , relD  [reldir|directory/|])
+       , ([relfile|parent|]         , ".."           , relDp [reldir|./|])
+       , ([relfile|parent-dir|]     , "../"          , relDp [reldir|./|])
+       , ([relfile|this-parent|]    , "./.."         , relDp [reldir|./|])
+       , ([relfile|parent-this|]    , "../."         , relDp [reldir|./|])
+       , ([relfile|plainfile|]      , "plain"        , relF  [relfile|plain|])
+       , ([relfile|dir|]            , "directory"    , relF  [relfile|directory|])
+       , ([relfile|dir-dir|]        , "directory/"   , relD  [reldir|directory/|])
 
-       , ("dr-prnt-dr" , "dir/../dir/"             , relD [reldir|directory/|])
-       , ("dr-prnt-dy" , "dir/../directory/"       , relD [reldir|directory/|])
-       , ("dy-prnt-dr" , "directory/../dir/"       , relD [reldir|directory/|])
-       , ("dy-prnt-dy" , "directory/../directory/" , relD [reldir|directory/|])
+       , ([relfile|dr-prnt-dr|] , "dir/../dir/"             , relD [reldir|directory/|])
+       , ([relfile|dr-prnt-dy|] , "dir/../directory/"       , relD [reldir|directory/|])
+       , ([relfile|dy-prnt-dr|] , "directory/../dir/"       , relD [reldir|directory/|])
+       , ([relfile|dy-prnt-dy|] , "directory/../directory/" , relD [reldir|directory/|])
 
-       , ("dr-prnt-dr-p"   , "dir/../dir/p" , relF  [relfile|directory/p|])
-       , ("dy-prnt-dr-p"   , "directory/../dir/p" ,
+       , ([relfile|dr-prnt-dr-p|]   , "dir/../dir/p" , relF  [relfile|directory/p|])
+       , ([relfile|dy-prnt-dr-p|]   , "directory/../dir/p" ,
           relF  [relfile|directory/p|])
-       , ("dr-prnt-dy-p"   , "dir/../directory/p" ,
+       , ([relfile|dr-prnt-dy-p|]   , "dir/../directory/p" ,
           relF  [relfile|directory/p|])
-       , ("dy-prnt-dy-p"   , "directory/../directory/p" ,
+       , ([relfile|dy-prnt-dy-p|]   , "directory/../directory/p" ,
           relF  [relfile|directory/p|])
       ]) ⊕ [
-        ReadlinkTestCase "dangle-relfile2" "dangle-relfile"
+        ReadlinkTestCase [relfile|dangle-relfile2|] "dangle-relfile"
                          (relF [relfile|dangle-relfile|])
                          (relF [relfile|nonesuch|])
         -- The target of a symlink can have a '/' at the end; but a symlink
@@ -115,13 +115,13 @@ readlinkTestCases =
         -- directory.  So the filepath target cannot usefully have a trailing
         -- '/' here, as that would not be a resolvable thing by readlink /
         -- resolvelink.
-      , ReadlinkTestCase "dangle-reldir2"  "dangle-reldir"
+      , ReadlinkTestCase [relfile|dangle-reldir2|]  "dangle-reldir"
                          (relF [relfile|dangle-reldir|])
                          (relD [reldir|nonesuch/|])
-      , ReadlinkTestCase "dangle-absfile2" "dangle-absfile"
+      , ReadlinkTestCase [relfile|dangle-absfile2|] "dangle-absfile"
                          (relF [relfile|dangle-absfile|])
                          (absF [absfile|/nonesuch|])
-      , ReadlinkTestCase "dangle-absdir2" "dangle-absdir"
+      , ReadlinkTestCase [relfile|dangle-absdir2|] "dangle-absdir"
                          (relF [relfile|dangle-absdir|])
                          (absD [absdir|/nonesuch/|])
       ]
