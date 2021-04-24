@@ -5,7 +5,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE UnicodeSyntax     #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -86,20 +88,20 @@ module MonadIO.File
   )
 where
 
-import Prelude  ( error, show )
+import Prelude  ( error )
 
 -- base --------------------------------
 
 import qualified  System.IO
 
-import Control.Arrow           ( (>>>) )
-import Control.Monad           ( (>=>), (=<<), forM_, join, return, when )
+import Control.Monad           ( (>=>), filterM, forM_, join, return, when )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Bool               ( Bool( False, True ) )
 import Data.Either             ( Either )
 import Data.Eq                 ( Eq )
 import Data.Foldable           ( Foldable )
-import Data.Function           ( ($), flip )
+import Data.Function           ( ($), const, flip )
+import Data.Functor            ( fmap )
 import Data.List               ( isSuffixOf, last, or )
 import Data.Maybe              ( Maybe( Just, Nothing ) )
 import Data.String             ( String )
@@ -134,11 +136,11 @@ import Data.Textual  ( toString )
 -- directory ---------------------------
 
 import System.Directory  ( createDirectory, getTemporaryDirectory
-                         , removePathForcibly, withCurrentDirectory )
+                         , removePathForcibly )
 
 -- exceptions --------------------------
 
-import Control.Monad.Catch  ( bracket, onException )
+import Control.Monad.Catch  ( MonadCatch, bracket, onException )
 
 -- fpath -------------------------------
 
@@ -149,10 +151,10 @@ import FPath.AppendableFPath   ( (⫻) )
 import FPath.AsFilePath        ( AsFilePath( filepath ) )
 import FPath.AsFilePath'       ( exterminate )
 import FPath.Dir               ( DirAs( _Dir_ ) )
+import FPath.DirType           ( DirType )
 import FPath.Error.FPathError  ( AsFPathError, FPathError, FPathIOError )
 import FPath.File              ( FileAs( _File_ ) )
-import FPath.Parent            ( parent )
-import FPath.Parseable         ( parse )
+import FPath.Parent            ( HasParentMay, parent, parents' )
 import FPath.RelDir            ( RelDir, reldir )
 import FPath.RelFile           ( RelFile, relfile )
 
@@ -179,6 +181,7 @@ import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
 import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
 import Data.MoreUnicode.Maybe    ( 𝕄 )
 import Data.MoreUnicode.Monad    ( (≪), (≫), (⪼) )
+import Data.MoreUnicode.Monoid   ( ю )
 import Data.MoreUnicode.Natural  ( ℕ )
 import Data.MoreUnicode.String   ( 𝕊 )
 import Data.MoreUnicode.Text     ( 𝕋 )
@@ -212,17 +215,13 @@ import System.IO.Temp  ( createTempDirectory )
 
 import qualified  Data.Text.IO  as  TextIO
 
-import Data.Text                 ( drop, length, pack )
+import Data.Text                 ( drop, length )
 import Data.Text.Encoding        ( decodeUtf8With )
 import Data.Text.Encoding.Error  ( lenientDecode )
 
 -- tfmt --------------------------------
 
 import Text.Fmt  ( fmt )
-
--- time --------------------------------
-
-import Data.Time.Clock  ( getCurrentTime )
 
 -- unix --------------------------------
 
@@ -240,8 +239,8 @@ import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
 
 import MonadIO.Base   ( hClose )
 import MonadIO.FPath  ( pResolve, pResolveDir )
-import MonadIO.FStat  ( FExists( FExists ), lfexists, lstat, stat )
-import MonadIO.Temp   ( mkTempDir )
+import MonadIO.FStat  ( FExists( FExists, NoFExists )
+                      , fexists, lfexists, lstat, stat )
 
 import MonadIO.T.ReadlinkTestCases  ( readExp, readlinkTestCases, resolveExp
                                     , slName, slTarget )
@@ -1017,6 +1016,29 @@ mkdir d p = do
 
 ----------------------------------------
 
+{- | Create all missing elements of a path.
+     The complex type signature in practice roughly equates `δ` to `Dir` or
+     `AbsDir` or `RelDir`.
+     Directories that are newly created are given the perms specified as `p`.
+     Pre-existing directories are untouched.
+     In case of error, newly-made directories are removed; pre-existing
+     directories are left in place.
+ -}
+mkpath ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, MonadCatch μ,
+                    DirAs δ, -- AsFilePath (DirType δ),
+                    HasParentMay δ, HasParentMay (DirType δ),
+                    DirType δ ~ DirType (DirType δ), δ ~ DirType δ) ⇒
+         δ → FileMode → μ ()
+mkpath d p = do
+  to_make ← filterM (fmap (≡ NoFExists) ∘ fexists) (parents' d)
+  case headMay to_make of
+    Nothing → return () -- nothing to do, all exist
+    Just t  → -- make the intervening dirs, carefully; in case of any error,
+              -- try to nuke those we freshly made
+              onException (forM_ to_make (\ a → mkdir a p)) (nuke t)
+
+----------------------------------------
+
 -- This has to return an absolute path, as the relative path might include
 -- many '..' that can't be represented by FPath.  So we resolve it.
 {- | Read a symlink, return the absolute path to the referent.  Note that as
@@ -1077,57 +1099,44 @@ data TestFileSpec = TFSFile RelFile FileMode 𝕋
                   -- FPath
                   | TFSSymL RelFile FilePath
 
--- make dirs in file names as needed
 testInTempDirFS ∷ Foldable φ ⇒
                   φ TestFileSpec → (AbsDir → IO()) → (IO AbsDir → TestTree)
                 → TestTree
 testInTempDirFS fs setup =
-  testInTempDir' (\ d → ӝ (mkTFSes @IOError d fs) ⪼ setup d)
+  let mkTFS ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, MonadCatch μ) ⇒
+              AbsDir → TestFileSpec → μ ()
+      mkTFS p (TFSFile f m t) = do
+        mkpath (f ⊣ parent) 0o700
+        writeExFileUTF8 @AbsFile m (p ⫻ f) t
+      mkTFS p (TFSDir  d m)   = mkdir @_ @AbsDir (p ⫻ d) m
+      mkTFS p (TFSSymL f t)   =
+        asIOError $ Files.createSymbolicLink t ((p ⫻ f ∷ AbsFile) ⫥ filepath)
 
-mkTFS ∷ (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒ AbsDir → TestFileSpec → μ ()
-mkTFS p (TFSFile f m t) = writeExFileUTF8 @AbsFile m (p ⫻ f) t
-mkTFS p (TFSDir  d m)   = mkdir @_ @AbsDir (p ⫻ d) m
-mkTFS p (TFSSymL f t)   =
-  asIOError $ Files.createSymbolicLink t ((p ⫻ f ∷ AbsFile) ⫥ filepath)
+      mkTFSes ∷ ∀ ε φ μ .
+                (Foldable φ, MonadIO μ, AsIOError ε, MonadError ε μ,
+                 MonadCatch μ) ⇒
+                AbsDir -> φ TestFileSpec -> μ ()
+      mkTFSes d fs' = forM_ fs' (mkTFS d)
 
-mkTFSes ∷ ∀ ε φ μ . (Foldable φ, MonadIO μ, AsIOError ε, MonadError ε μ) ⇒
-          AbsDir -> φ TestFileSpec -> μ ()
-mkTFSes d fs = forM_ fs (mkTFS d)
+   in testInTempDir' (\ d → ӝ (mkTFSes @IOError d fs) ⪼ setup d)
 
 
 _readlinkTests ∷ TestName → (𝕊 → IO (Either FPathIOError Abs)) → (α → RelFile)
                → (α → FilePath) → (α → AbsDir → Abs) → [α] → TestTree
 _readlinkTests name f getName getTarget getExp ts =
-  let mkTempDir_ ∷ MonadIO μ ⇒ μ AbsDir
-      mkTempDir_ = ӝ $ mkTempDir @FPathIOError
+  let file_setup = ю [ [ TFSDir  [reldir|directory/|] 0o700
+                       , TFSFile [relfile|plain|] 0o644 "some text" ]
+                     , [ TFSSymL (getName t) (getTarget t) | t ← ts ]
+                     ]
+      check ∷ IO AbsDir → 𝕊 → (AbsDir → Abs) → TestTree
+      check d fn exp = let path t = toString t ⊕ "/" ⊕ fn
+                        in testCase fn $ d ≫ \ t →
+                             f (path t) ≫ assertRight (exp t ≟)
+      -- check' ∷ IO AbsDir → α → TestTree
+      check' d t = check d (getName t ⫥ filepath) (getExp t)
+      do_test tmpdir = testGroup name [ check' tmpdir t | t ← ts ]
 
-      {- | Write a file, perms 0700, throw IOException on error.  -}
-      writeUTF8 ∷ FileAs γ ⇒ γ → 𝕋 → IO ()
-      writeUTF8 fn = ӝ ∘ writeFileUTF8 @IOError (Just 0o700) fn
-
-      {- | Write a file with the current time, throw IOException on error -}
-      writeTime ∷ FileAs γ ⇒ γ → IO ()
-      writeTime fn = (pack ∘ show ⊳ getCurrentTime) ≫ writeUTF8 fn
-
-      {- | Write links, also a plain file & a dir, into the temp dir for
-           testing. -}
-      populateTemp ∷ (MonadIO μ, MonadError FPathIOError μ) ⇒ AbsDir → μ ()
-      populateTemp d = liftIO $ do
-        return ()
-
-      -- We factor this out so it can be run on exception during creation;
-      -- `withResource` does not run the resource-close step if there was an
-      -- IOException during the resource-acquisition step
-      delTemp ∷ AbsDir → IO ()
-      delTemp = ӝ ∘ nuke @FPathIOError
-
-    in testInTempDirFS ([TFSDir [reldir|directory/|] 0o700, TFSFile [relfile|plain|] 0o644 "some text"] ⊕ [TFSSymL (getName t) (getTarget t) | t ← ts]) (ӝ ∘ populateTemp) $
-      \ tmpdir →
-      let check ∷ 𝕊 → (AbsDir → Abs) → TestTree
-          check fn exp = let path t = toString t ⊕ "/" ⊕ fn
-                          in testCase fn $ tmpdir ≫ \ t →
-                               f (path t) ≫ assertRight (exp t ≟)
-       in testGroup name [ check (review filepath $ getName t) (getExp t) | t ← ts ]
+  in testInTempDirFS file_setup (const $ return ()) do_test
 
 ----------
 

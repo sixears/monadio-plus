@@ -1,16 +1,18 @@
 {-# LANGUAGE RankNTypes    #-}
+{-# LANGUAGE TypeFamilies  #-}
 {-# LANGUAGE UnicodeSyntax #-}
 {-# LANGUAGE ViewPatterns  #-}
 
 -- Split here so that FPath, File can both use it
 
 module MonadIO.FStat
-  ( FExists(..), fexists, fexists', lfexists, lfexists', lstat, stat, tests )
+  ( FExists(..), extantP, extantP', fexists, fexists', lfexists, lfexists'
+  , lstat, stat, tests )
 where
 
 -- base --------------------------------
 
-import Control.Monad           ( Monad, join, return )
+import Control.Monad           ( Monad, join, return, sequence )
 import Control.Monad.IO.Class  ( MonadIO )
 import Data.Bool               ( Bool( False, True ), bool )
 import Data.Eq                 ( Eq )
@@ -29,7 +31,7 @@ import Data.Function.Unicode  ( (∘) )
 
 -- data-textual ------------------------
 
-import Data.Textual  ( toString )
+import Data.Textual  ( Printable, toString )
 
 -- fpath -------------------------------
 
@@ -37,6 +39,8 @@ import FPath.AbsDir       ( absdir )
 import FPath.AbsFile      ( absfile )
 import FPath.AsFilePath   ( AsFilePath( filepath ) )
 import FPath.AsFilePath'  ( exterminate )
+import FPath.DirType      ( DirType )
+import FPath.Parent       ( HasParentMay, parents' )
 
 -- fstat -------------------------------
 
@@ -44,9 +48,10 @@ import FStat  ( FStat, FileType( Directory ), ftype, mkfstat )
 
 -- monadio-error -----------------------
 
-import MonadError           ( ѥ )
+import MonadError           ( ѥ, eFromMaybe )
 import MonadError.IO        ( asIOErrorY )
-import MonadError.IO.Error  ( AsIOError, IOError, squashInappropriateTypeT )
+import MonadError.IO.Error  ( AsIOError, IOError
+                            , squashInappropriateTypeT, userE )
 
 -- more-unicode ------------------------
 
@@ -77,7 +82,11 @@ import TastyPlus  ( assertRight, runTestsP, runTestsReplay
 
 -- safe --------------------------------
 
-import Safe  ( lastDef )
+import Safe  ( lastDef, lastMay )
+
+-- tfmt --------------------------------
+
+import Text.Fmt  ( fmt )
 
 -- unix --------------------------------
 
@@ -211,6 +220,38 @@ statTests =
                 ]
 
 ----------------------------------------
+
+{- | Like `extantP`, but gives a Maybe lest there be no valid parent.  Honestly,
+     I'm not even sure how to make that happen for the sake of testing. -}
+extantP' ∷ ∀ ε α μ .
+          (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath (DirType α),
+           HasParentMay α, HasParentMay (DirType α),
+           DirType α ~ DirType (DirType α), DirType (DirType α) ~ α) ⇒
+          α -> μ (Maybe (DirType α))
+extantP' f = do
+  fex ← (sequence $ (\ d -> (d,) ⊳ fexists d) ⊳ parents' f)
+  return $ lastMay [ d | (d,g) ← fex, g ≡ FExists ]
+
+--------------------
+
+{- | Find the closest ancestor (longest prefix subpath) of `f` that exists
+     (possibly including `f` itself).
+     The complex type signature in practice roughly equates `δ` to `Dir` or
+     `AbsDir` or `RelDir`.
+     This should always give a result, since at a minimum, `/` (for `AbsDir`)
+     or `./` (for `RelDir`) should exist (even if pwd is a since-deleted
+     directory, `./` should still exist); if that is somehow violated, an
+     `IOError` will be thrown.
+ -}
+extantP ∷ ∀ ε δ μ .
+          (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath (DirType δ),
+           HasParentMay δ, HasParentMay (DirType δ),
+           Printable δ, DirType δ ~ δ,
+           DirType δ ~ DirType (DirType δ), DirType (DirType δ) ~ δ) ⇒
+          δ -> μ (DirType δ)
+extantP f = extantP' f ≫ eFromMaybe (userE $ [fmt|'%T' has no extant parent|] f)
+
+--------------------------------------------------------------------------------
 
 tests ∷ TestTree
 tests = testGroup "MonadIO.FStat" [ fexistsTests, fexists'Tests, statTests ]

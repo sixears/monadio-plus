@@ -57,14 +57,9 @@ library
   other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base, base-unicode-symbols, bytestring
-                     , containers
-                     , data-textual, directory, exceptions
-                     , filepath
-                     , lens, mtl
-                     , safe
-                     , tasty, tasty-hunit, temporary, text, time
-                     , unix
+  build-depends:       base, base-unicode-symbols, bytestring, containers
+                     , data-textual, directory, exceptions, filepath, lens, mtl
+                     , safe, tasty, tasty-hunit, temporary, text, unix
 
                      , fpath         >= 1.1.2.0
                      , fstat         >= 1.0.1.0
