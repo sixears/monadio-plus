@@ -1,9 +1,5 @@
 {-# LANGUAGE UnicodeSyntax #-}
 
--- base --------------------------------
-
-import System.IO  ( IO )
-
 -- tasty -------------------------------
 
 import Test.Tasty           ( defaultIngredients )

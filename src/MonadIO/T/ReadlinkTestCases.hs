@@ -1,4 +1,6 @@
-{-# LANGUAGE UnicodeSyntax #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE UnicodeSyntax     #-}
 
 module MonadIO.T.ReadlinkTestCases
   ( ReadlinkTestCase

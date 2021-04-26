@@ -1,3 +1,14 @@
+1.4.2.0 2021-04-26
+==================
+- split File into FPath,FStat,OpenFile,Temp
+- add Tasty
+- add inDir,mkdir,mkpath,nuke (in Directory)
+- add PResolvable( pResolveDir, pResolve),getCwd (in FPath) (moved from fpath)
+- add extantP{,'}
+- export fileWritable, isWritableFile, isWritableDir, fileFoldLinesUTF8,
+  fileFoldLinesH
+- add readlink, resolvelink
+
 1.4.1.0 2021-03-12
 ==================
 - add lfexists{,'}

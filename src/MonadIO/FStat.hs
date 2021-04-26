@@ -1,7 +1,12 @@
-{-# LANGUAGE RankNTypes    #-}
-{-# LANGUAGE TypeFamilies  #-}
-{-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE ViewPatterns  #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE UnicodeSyntax     #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 -- Split here so that FPath, File can both use it
 

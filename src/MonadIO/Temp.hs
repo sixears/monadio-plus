@@ -1,6 +1,7 @@
-{-# LANGUAGE RankNTypes    #-}
-{-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE ViewPatterns  #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes       #-}
+{-# LANGUAGE UnicodeSyntax    #-}
+{-# LANGUAGE ViewPatterns     #-}
 
 module MonadIO.Temp
   ( mkTempDir, withTempDir'', withTempDirCD, withTempDirCD'
@@ -44,7 +45,7 @@ import FPath.AsFilePath        ( filepath )
 import FPath.Dir               ( DirAs( _Dir_ ) )
 import FPath.Error.FPathError  ( AsFPathError )
 import FPath.FileTypeC         ( FileTypeC( FileType ) )
-import FPath.Rel'              ( RelAs( _Rel_ ) )
+import FPath.Rel               ( RelAs( _Rel_ ) )
 import FPath.RelFile           ( RelFile )
 import FPath.Parseable         ( Parseable( parse ) )
 

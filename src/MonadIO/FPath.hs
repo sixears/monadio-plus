@@ -11,7 +11,7 @@
 {-# LANGUAGE ViewPatterns        #-}
 
 module MonadIO.FPath
-  ( PResolvable( pResolveDir, pResolve ), getCwd, inDir, inDirT
+  ( PResolvable( pResolveDir, pResolve ), getCwd
 
   , tests
   )
@@ -87,7 +87,7 @@ import MonadError.IO.Error  ( AsIOError, (~~) )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Functor  ( (⊳), (⩺) )
-import Data.MoreUnicode.Lens     ( (⊣), (##) )
+import Data.MoreUnicode.Lens     ( (⊣) )
 import Data.MoreUnicode.Monad    ( (≫), (⪼) )
 import Data.MoreUnicode.Natural  ( ℕ )
 
@@ -152,21 +152,10 @@ _inDir (toString → d) io =
     Left e' → join $ throwError (e' ~~ d)-- (ioEWithPath d e')
     Right r → return r
 
-{- | like `inDirT`, but takes IO that already throws some error(s). -}
+{- | like `inDir`, but takes IO that already throws some error(s). -}
 _inDirT ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, Printable τ) ⇒
           τ → ExceptT ε IO α → μ α
 _inDirT d io = join $ _inDir d (ѥ io)
-
-{- | Perform IO in the context of a given directory. -}
-inDir ∷ (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒ AbsDir → IO α → μ α
-inDir d = _inDir (d ## filepath)
-
-{- | Perform MonadError-IO in the context of a given directory.  This is for
-     when you have IO already bound with errors; e.g.,
-     `As*Error ε, MonadError ε μ` on the input IO.
- -}
-inDirT ∷ (MonadIO μ,AsIOError ε,MonadError ε μ) ⇒ AbsDir → ExceptT ε IO α → μ α
-inDirT d io = join $ inDir d (ѥ io)
 
 scan ∷ (α → α → α) → α → [α] → [(α,α)]
 scan f b xs = zip (scanl f b xs) (scanr f b xs)
