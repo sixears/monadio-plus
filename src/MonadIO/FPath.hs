@@ -30,6 +30,7 @@ import Data.List               ( dropWhileEnd, head, reverse, scanl, scanr,zip )
 import Data.String             ( String )
 import Data.Tuple              ( fst )
 import GHC.Exts                ( toList )
+import GHC.Stack               ( HasCallStack )
 import System.Exit             ( ExitCode )
 import System.IO               ( IO )
 
@@ -128,7 +129,9 @@ import MonadIO.FStat  ( FExists( FExists ), fexists )
 --------------------------------------------------------------------------------
 
 {- | Current working directory -}
-getCwd ∷ (AsIOError ε, AsFPathError ε, MonadError ε μ, MonadIO μ) ⇒ μ AbsDir
+getCwd ∷ ∀ ε μ .
+         (AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack, MonadIO μ)⇒
+         μ AbsDir
 getCwd = let addSlash "" = ""
              addSlash t@(last → '/') = t
              addSlash t = t ⊕ "/"
@@ -145,7 +148,9 @@ getCwdTests =
 ----------------------------------------
 
 {- | Perform IO within a directory, with declared errors. -}
-_inDir ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, Printable τ) ⇒ τ → IO α → μ α
+_inDir ∷ ∀ ε α τ μ .
+         (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, Printable τ) ⇒
+         τ → IO α → μ α
 _inDir (toString → d) io =
   -- ensure that the path is attached to the error
   (ѥ ∘ asIOError $ withCurrentDirectory d io) ≫ \ case
@@ -153,7 +158,8 @@ _inDir (toString → d) io =
     Right r → return r
 
 {- | like `inDir`, but takes IO that already throws some error(s). -}
-_inDirT ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, Printable τ) ⇒
+_inDirT ∷ forall ε α τ μ .
+          (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, Printable τ) ⇒
           τ → ExceptT ε IO α → μ α
 _inDirT d io = join $ _inDir d (ѥ io)
 
@@ -208,7 +214,7 @@ splitPointsTests =
      dir along the way, and read for the final file (if any); else an
      `AsIOError` will be raised.
  -}
-resolve ∷ (AsIOError ε, MonadError ε μ, MonadIO μ) ⇒
+resolve ∷ forall ε μ . (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ) ⇒
           AbsDir → FilePath → μ (FilePath, FilePath)
 resolve d =
   let -- prepend `d`, note this is a no-op for input abs functions
@@ -229,14 +235,16 @@ class PResolvable α where
        work for directories that you have permission to @chdir@ into (for files,
        you need to be able to @chdir@ into the parent directory).
    -}
-  pResolveDir ∷ (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-                 MonadIO μ) ⇒
+  pResolveDir ∷ ∀ ε τ μ .
+                (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+                 HasCallStack, MonadIO μ) ⇒
                 AbsDir → τ → μ α
 
   {- | `pResolveDir`, taking the current working directory as the starting point
    -}
-  pResolve ∷ (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε  μ,
-              MonadIO μ) ⇒
+  pResolve ∷ ∀ ε τ μ .
+             (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+              HasCallStack, MonadIO μ) ⇒
              τ → μ α
   pResolve f = getCwd ≫ \ d → pResolveDir d f
 
@@ -246,8 +254,9 @@ class PResolvable α where
      directory.
  -}
 instance PResolvable AbsDir where
-  pResolveDir ∷ (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-                 MonadIO μ) ⇒
+  pResolveDir ∷ ∀ ε τ μ .
+                (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+                 HasCallStack, MonadIO μ) ⇒
                 AbsDir → τ → μ AbsDir
   pResolveDir d (toString → p) = do
     (extant,non_extant) ← resolve d p
@@ -348,8 +357,9 @@ pResolveDirAbsDirTests =
      trailing '/' as a dir, and thus fails.
  -}
 instance PResolvable AbsFile where
-  pResolveDir ∷ (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-                 MonadIO μ)⇒
+  pResolveDir ∷ ∀ ε τ μ .
+                (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+                 HasCallStack, MonadIO μ) ⇒
                 AbsDir → τ → μ AbsFile
   pResolveDir d (toString → f) =
     -- we can't simply use parseRelFile, etc., here, as we want to accept
@@ -412,8 +422,9 @@ pResolveAbsFileTests =
      input strings cause a failure.
  -}
 instance PResolvable Abs where
-  pResolveDir ∷ (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-                 MonadIO μ)⇒
+  pResolveDir ∷ forall ε τ μ .
+                (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+                 HasCallStack, MonadIO μ)⇒
                 AbsDir → τ → μ Abs
   pResolveDir _ (toString → [])                       = __FPathEmptyE__ absT
   pResolveDir d t@(toString → ".")                    = AbsD ⊳ pResolveDir d t

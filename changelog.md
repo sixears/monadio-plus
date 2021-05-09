@@ -1,3 +1,7 @@
+1.4.2.1 2021-05-09
+==================
+- litter the landscape with HasCallStack wherever there is MonadError
+
 1.4.2.0 2021-04-26
 ==================
 - split File into FPath,FStat,OpenFile,Temp

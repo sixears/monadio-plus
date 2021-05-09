@@ -14,6 +14,7 @@ import Control.Monad           ( (>=>), return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Function           ( ($), flip )
 import Data.List               ( dropWhileEnd )
+import GHC.Stack               ( HasCallStack )
 import System.Environment      ( getProgName )
 import System.IO               ( FilePath, Handle, IO, NewlineMode
                                , TextEncoding
@@ -95,14 +96,17 @@ parseAbsDir = parse ∘ (⊕ "/") ∘ dropWhileEnd (≡ '/')
 ----------------------------------------
 
 {- | Get the system temporary directory (TMPDIR, etc.) -}
-tempdir ∷ (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒ μ AbsDir
+tempdir ∷ ∀ ε μ .
+          (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+           HasCallStack) ⇒
+          μ AbsDir
 tempdir = asIOError getCanonicalTemporaryDirectory ≫ parseAbsDir
 
 {- | Create a temporary directory as a subdir of a given dir; return its name.
      It is the responsibility of the caller to arrange appropriate cleanup. -}
-mkTempDir'' ∷ ∀ ε δ ρ μ .
-              (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ, RelAs ρ,
-               DirAs δ) ⇒
+mkTempDir'' ∷ ∀ ε ρ δ μ .
+              (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+               HasCallStack, RelAs ρ, DirAs δ) ⇒
               δ → ρ → μ AbsDir
 mkTempDir'' t (review filepath ∘ review _Rel_ → r) = do
   d ← liftIO $ createTempDirectory (t ⫥ (filepath ∘ _Dir_)) r
@@ -110,13 +114,16 @@ mkTempDir'' t (review filepath ∘ review _Rel_ → r) = do
 
 {- | `mkTempDir''`, but create a dir in the system temp dir. -}
 mkTempDir' ∷ ∀ ε ρ μ .
-             (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ, RelAs ρ) ⇒
+             (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+              HasCallStack, RelAs ρ) ⇒
              ρ → μ AbsDir
 mkTempDir' r = tempdir ≫ \ d → mkTempDir'' d r
 
 {- | `mkTempDir'`, with the prefix being the program name plus `"-"`. -}
 mkTempDir ∷ ∀ ε μ .
-            (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒ μ AbsDir
+            (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+             HasCallStack) ⇒
+            μ AbsDir
 mkTempDir = progNamePrefix ≫ mkTempDir'
 
 {- | Perform some IO with a given temporary file, created within some given dir;
@@ -124,8 +131,9 @@ mkTempDir = progNamePrefix ≫ mkTempDir'
      passed into the IO as an `AbsFile`.  The directory name is prefixed by some
      relative name.
  -}
-withTempFile'' ∷ (MonadIO μ, MonadMask μ,
-                  AsFPathError ε, AsIOError ε, MonadError ε μ,
+withTempFile'' ∷ ∀ ε α ρ δ μ .
+                 (MonadIO μ, MonadMask μ,
+                  AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack,
                   DirAs δ, Parseable (FileType δ), RelAs ρ) ⇒
                  δ → ρ → (FileType δ → Handle → ExceptT ε IO α) → μ α
 withTempFile'' d (review $ filepath ∘ _Rel_ → r) io =
@@ -134,14 +142,17 @@ withTempFile'' d (review $ filepath ∘ _Rel_ → r) io =
 
 
 {- | Like `withTempFile''`, but uses the system temp dir (see `tempdir`). -}
-withTempFile' ∷ (MonadIO μ, MonadMask μ,
-                 AsFPathError ε, AsIOError ε, MonadError ε μ, RelAs ρ) ⇒
+withTempFile' ∷ ∀ ε α ρ μ .
+                (MonadIO μ, MonadMask μ,
+                 AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack,
+                 RelAs ρ) ⇒
                 ρ → (AbsFile → Handle → ExceptT ε IO α) → μ α
 withTempFile' r io = tempdir ≫ \ d → withTempFile'' d r io
 
 {- | Like `withTempFile''`, but uses the system temp dir (see `tempdir`). -}
-withTempFile ∷ (MonadIO μ, MonadMask μ,
-                AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
+withTempFile ∷ ∀ ε α μ .
+               (MonadIO μ, MonadMask μ,
+                AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
                (AbsFile → Handle → ExceptT ε IO α) → μ α
 withTempFile io = progNamePrefix ≫ \ p → withTempFile' p io
 
@@ -157,8 +168,9 @@ _parseD = parse ∘ (⊕ "/") ∘ dropWhileEnd (≡ '/')
  -}
 -- note that withTempDirectory will give us a relative dir if passed a relative
 -- dir (that exists and is usable)
-withTempDir'' ∷ (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
-                 MonadError ε μ, DirAs δ, Parseable δ, RelAs ρ) ⇒
+withTempDir'' ∷ ∀ ε α ρ δ μ .
+                (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
+                 MonadError ε μ, HasCallStack, DirAs δ, Parseable δ, RelAs ρ) ⇒
                 δ → ρ → (δ → ExceptT ε IO α) → μ α
 withTempDir'' d (review $ filepath ∘ _Rel_ → r) io =
   asIOErrorT $ withTempDirectory (d ⫥ filepath ∘ _Dir_) r (_parseD >=> io)
@@ -170,34 +182,40 @@ withTempDir'' d (review $ filepath ∘ _Rel_ → r) io =
      directory created is passed into the IO as an `AbsDir`.  The directory name
      is prefixed by some relative name.
  -}
-withTempDir' ∷ (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
-                MonadError ε μ, RelAs ρ) ⇒
+withTempDir' ∷ ∀ ε α ρ μ .
+               (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
+                MonadError ε μ, HasCallStack, RelAs ρ) ⇒
                ρ → (AbsDir → ExceptT ε IO α) → μ α
 withTempDir' r io = tempdir ≫ \ d → withTempDir'' d r io
 
 {- | A prefix (suitable for, e.g., temp files or dirs) in the form of a
      `RelFile` (which is the programme name, plus a '-' character. -}
-progNamePrefix ∷ (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
+progNamePrefix ∷ ∀ ε μ .
+                 (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+                  HasCallStack) ⇒
                  μ RelFile
 progNamePrefix = asIOError getProgName ≫ parse ∘ (⊕ "-")
 
 {- | Like `withTempDir'`, with the prefix being the program name plus `"-"`. -}
-withTempDir ∷ (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
-               MonadError ε μ) ⇒
+withTempDir ∷ ∀ ε α μ .
+              (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
+               MonadError ε μ, HasCallStack) ⇒
               (AbsDir → ExceptT ε IO α) → μ α
 withTempDir io = progNamePrefix ≫ \ p → withTempDir' p io
 
 {- | Like `withTempDir`, but temporarily changes dir into the temporary
      directory, rather than passing the dir name to the IO. -}
-withTempDirCD ∷ (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
-                 MonadError ε μ) ⇒
+withTempDirCD ∷ ∀ ε α μ .
+                (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
+                 MonadError ε μ, HasCallStack) ⇒
                 ExceptT ε IO α → μ α
 withTempDirCD io = withTempDir (flip inDir io)
 
 {- | Like `withTempDir`, but temporarily changes dir into the temporary
      directory, as well as passing the dir name to the IO. -}
-withTempDirCD' ∷ (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
-                  MonadError ε μ) ⇒
+withTempDirCD' ∷ ∀ ε α μ .
+                 (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
+                  MonadError ε μ, HasCallStack) ⇒
                  (AbsDir → ExceptT ε IO α) → μ α
 withTempDirCD' io = withTempDir (\ d → inDir d $ io d)
 
@@ -205,8 +223,9 @@ withTempDirCD' io = withTempDir (\ d → inDir d $ io d)
 
 {- | Write a temporary file, with contents, using a given encoding, newline-mode
      and writer function. -}
-writeTempFile ∷ (MonadIO μ, MonadMask μ,
-                 AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
+writeTempFile ∷ ∀ ε τ μ .
+                (MonadIO μ, MonadMask μ,
+                 AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
                 TextEncoding → NewlineMode → (Handle → τ → IO ()) → τ
               → μ AbsFile
 writeTempFile enc nlm wrt t = withTempFile $ \ tempfn h → do
@@ -220,15 +239,17 @@ writeTempFile enc nlm wrt t = withTempFile $ \ tempfn h → do
 ----------
 
 {- | Write a temporary file with UTF8 contents. -}
-writeTempFileUTF8 ∷ (MonadIO μ, MonadMask μ,
-                     AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
+writeTempFileUTF8 ∷ ∀ ε μ .
+                    (MonadIO μ, MonadMask μ,
+                     AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
                     Text → μ AbsFile
 writeTempFileUTF8   = writeTempFile utf8 nativeNewlineMode TextIO.hPutStr
 
 ----------
 
 {- | Write a temporary file with binary contents. -}
-writeTempFileBinary ∷ (MonadIO μ, MonadMask μ,
+writeTempFileBinary ∷ ∀ ε μ .
+                      (MonadIO μ, MonadMask μ,
                        AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
                       ByteString → μ AbsFile
 writeTempFileBinary = writeTempFile char8 noNewlineTranslation BS.hPutStr

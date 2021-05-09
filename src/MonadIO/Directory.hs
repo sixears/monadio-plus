@@ -16,6 +16,7 @@ import Control.Monad.IO.Class  ( MonadIO )
 import Data.Function           ( ($) )
 import Data.Functor            ( fmap )
 import Data.Maybe              ( Maybe( Just, Nothing ) )
+import GHC.Stack               ( HasCallStack )
 import System.IO               ( IO )
 import System.Posix.Types      ( FileMode )
 
@@ -72,20 +73,22 @@ import MonadIO.FStat  ( FExists( FExists, NoFExists ), fexists, lfexists )
 --------------------------------------------------------------------------------
 
 {- | Perform IO with the dir *temporarily* changed to a given directory. -}
-inDir ∷ (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ) ⇒
+inDir ∷ (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
          δ → ExceptT ε IO α → μ α
 inDir (review $ filepath ∘ _Dir_ → d) io =
   join ∘ asIOError $ withCurrentDirectory d (ѥ io)
 
 ----------------------------------------
 
-nuke ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
+nuke ∷ ∀ ε ρ μ .
+       (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, AsFilePath ρ) ⇒
        ρ → μ ()
 nuke (review filepath → fp) = asIOError $ removePathForcibly fp
 
 ----------------------------------------
 
-mkdir ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, DirAs δ) ⇒
+mkdir ∷ ∀ ε δ μ .
+        (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, DirAs δ) ⇒
         δ → FileMode → μ ()
 mkdir d p = do
   let _mkdir = asIOError ∘ createDirectory ∘ (review $ filepath ∘ _Dir_)
@@ -103,8 +106,8 @@ mkdir d p = do
      In case of error, newly-made directories are removed; pre-existing
      directories are left in place.
  -}
-mkpath ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, MonadCatch μ,
-                    DirAs δ, -- AsFilePath (DirType δ),
+mkpath ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack,
+                    MonadCatch μ, DirAs δ,
                     HasParentMay δ, HasParentMay (DirType δ),
                     DirType δ ~ DirType (DirType δ), δ ~ DirType δ) ⇒
          δ → FileMode → μ ()

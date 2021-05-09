@@ -49,6 +49,7 @@ import Data.Function           ( ($), const )
 import Data.List               ( isSuffixOf, last, or )
 import Data.Maybe              ( Maybe( Just, Nothing ) )
 import Data.String             ( String )
+import GHC.Stack               ( HasCallStack )
 import System.Exit             ( ExitCode )
 import System.IO               ( FilePath, Handle, IO
                                , IOMode( AppendMode, ReadMode, ReadWriteMode
@@ -141,7 +142,7 @@ import Text.Fmt  ( fmt )
 -- unix --------------------------------
 
 import qualified  System.Posix.Files  as  Files
-import System.Posix.Files  ( readSymbolicLink, removeLink )
+import System.Posix.Files  ( readSymbolicLink )
 import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
                                           , noctty, nonBlock, trunc )
                            , noctty, nonBlock
@@ -154,7 +155,7 @@ import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
 import MonadIO.FStat     as  FStat     hiding ( tests )
 import MonadIO.OpenFile  as  OpenFile  hiding ( tests )
 
-import MonadIO.Base      ( chmod, hClose )
+import MonadIO.Base      ( chmod, hClose, unlink )
 import MonadIO.FPath     ( pResolve, pResolveDir )
 import MonadIO.Tasty     ( TestFileSpec( TFSDir, TFSFile, TFSSymL )
                          , testInTempDirFS )
@@ -232,10 +233,6 @@ writeExFlags = OpenFileFlags { append = False, exclusive = True, noctty = False,
 appendFlags ∷ OpenFileFlags
 appendFlags = OpenFileFlags { append = True, exclusive = False, noctty = False,
                               nonBlock = False, trunc = False }
-----------------------------------------
-
-unlink ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, FileAs γ) ⇒ γ → μ ()
-unlink (review _File_ → fn) = asIOError $ removeLink (fn ⫥ filepath)
 
 -- fileAccess ----------------------------------------------
 
@@ -244,7 +241,8 @@ data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX
                 | ACCESS_X | ACCESS_RW
   deriving (Eq,Show)
 
-access ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
+access ∷ ∀ ε ρ μ .
+         (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, AsFilePath ρ) ⇒
          AccessMode → ρ → μ (𝕄 𝔹)
 access mode ((⫥ filepath) → fp) = asIOErrorY $ go mode fp
   where go ∷ AccessMode → FilePath → IO 𝔹
@@ -258,14 +256,16 @@ access mode ((⫥ filepath) → fp) = asIOErrorY $ go mode fp
 
 {- | Simple shortcut for file (or directory) is writable by this user; `Nothing`
      is returned if file does not exist. -}
-writable ∷ ∀ ε ρ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath ρ) ⇒
+writable ∷ ∀ ε ρ μ .
+           (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, AsFilePath ρ)⇒
             ρ → μ (𝕄 𝔹)
 writable = access ACCESS_W
 
 ----------------------------------------
 
 {- | Is `f` an extant writable file? -}
-_isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ ,AsIOError ε) ⇒
+_isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ, HasCallStack,
+                   AsIOError ε) ⇒
                   γ → 𝕄 FStat -> μ (𝕄 𝕋)
 
 _isWritableFile (review _File_ → f) st =
@@ -282,7 +282,9 @@ _isWritableFile (review _File_ → f) st =
 ----------------------------------------
 
 {- | Is `f` an extant writable file? -}
-isWritableFile ∷ ∀ ε γ μ . (MonadIO μ, FileAs γ, MonadError ε μ, AsIOError ε) ⇒
+isWritableFile ∷ ∀ ε γ μ .
+                (MonadIO μ, FileAs γ, MonadError ε μ, HasCallStack,
+                 AsIOError ε) ⇒
                  γ -> μ (𝕄 𝕋)
 
 isWritableFile (review _File_ → f) = stat f ≫ _isWritableFile f
@@ -300,7 +302,8 @@ isWritableFileTests =
 ----------------------------------------
 
 {- | Is `d` an extant writable directory? -}
-isWritableDir ∷ ∀ ε γ μ . (MonadIO μ, DirAs γ, MonadError ε μ, AsIOError ε) ⇒
+isWritableDir ∷ ∀ ε γ μ .
+                (MonadIO μ, DirAs γ, MonadError ε μ, HasCallStack, AsIOError ε)⇒
                 γ -> μ (𝕄 𝕋)
 
 isWritableDir d =
@@ -344,7 +347,7 @@ isWritableDirTests =
      In case of not writable, some error text is returned to say why.
  -}
 fileWritable ∷ ∀ γ ε μ .
-               (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
+               (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack)⇒
                γ → μ (𝕄 𝕋)
 fileWritable (review _File_ → fn) = do
   stat fn ≫ \ case
@@ -381,8 +384,10 @@ fileWritableTests =
 ----------------------------------------
 
 {- | Work over a file, accumulating results, line-by-line. -}
-fileFoldLinesUTF8 ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ) ⇒
-                     α → (α → 𝕋 → IO α) → γ → μ α
+fileFoldLinesUTF8 ∷ ∀ ε γ α μ .
+                    (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ,
+                     HasCallStack) ⇒
+                    α → (α → 𝕋 → IO α) → γ → μ α
 fileFoldLinesUTF8 a io fn = withReadFileUTF8 fn $ fileFoldLinesH a io
 
 fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
@@ -397,7 +402,7 @@ fileFoldLinesH a io h = do
 ----------------------------------------
 
 {- | An open RW handle to /dev/null. -}
-devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ) ⇒ μ Handle
+devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ Handle
 devnull = openFileReadWriteNoTruncBinary Nothing [absfile|/dev/null|]
 
 ----------------------------------------
