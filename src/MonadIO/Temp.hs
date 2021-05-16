@@ -5,6 +5,7 @@
 
 module MonadIO.Temp
   ( mkTempDir, withTempDir'', withTempDirCD, withTempDirCD'
+  , withTempFH, withBinaryTempFH, withUTF8TempFH
   , writeTempFileBinary, writeTempFileUTF8 )
 where
 
@@ -17,8 +18,8 @@ import Data.List               ( dropWhileEnd )
 import GHC.Stack               ( HasCallStack )
 import System.Environment      ( getProgName )
 import System.IO               ( FilePath, Handle, IO, NewlineMode
-                               , TextEncoding
-                               , char8, hSetEncoding, hSetNewlineMode
+                               , SeekMode( AbsoluteSeek ), TextEncoding
+                               , char8, hSeek, hSetEncoding, hSetNewlineMode
                                , nativeNewlineMode, noNewlineTranslation, utf8
                                )
 
@@ -63,6 +64,7 @@ import MonadError.IO.Error  ( AsIOError )
 
 import Data.MoreUnicode.Lens   ( (⫥) )
 import Data.MoreUnicode.Monad  ( (≫) )
+import Data.MoreUnicode.Text   ( 𝕋 )
 
 -- mtl ---------------------------------
 
@@ -85,10 +87,15 @@ import Data.Text  ( Text )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Base       ( hClose )
+import MonadIO.Base       ( hClose, unlink )
 import MonadIO.Directory  ( inDir )
 
 --------------------------------------------------------------------------------
+
+type ℍ  = Handle
+type 𝔹𝕊 = ByteString
+
+----------------------------------------
 
 parseAbsDir ∷ (AsFPathError ε, MonadError ε η) ⇒ FilePath → η AbsDir
 parseAbsDir = parse ∘ (⊕ "/") ∘ dropWhileEnd (≡ '/')
@@ -102,6 +109,8 @@ tempdir ∷ ∀ ε μ .
           μ AbsDir
 tempdir = asIOError getCanonicalTemporaryDirectory ≫ parseAbsDir
 
+----------------------------------------
+
 {- | Create a temporary directory as a subdir of a given dir; return its name.
      It is the responsibility of the caller to arrange appropriate cleanup. -}
 mkTempDir'' ∷ ∀ ε ρ δ μ .
@@ -112,6 +121,8 @@ mkTempDir'' t (review filepath ∘ review _Rel_ → r) = do
   d ← liftIO $ createTempDirectory (t ⫥ (filepath ∘ _Dir_)) r
   parseAbsDir d
 
+--------------------
+
 {- | `mkTempDir''`, but create a dir in the system temp dir. -}
 mkTempDir' ∷ ∀ ε ρ μ .
              (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
@@ -119,12 +130,16 @@ mkTempDir' ∷ ∀ ε ρ μ .
              ρ → μ AbsDir
 mkTempDir' r = tempdir ≫ \ d → mkTempDir'' d r
 
+--------------------
+
 {- | `mkTempDir'`, with the prefix being the program name plus `"-"`. -}
 mkTempDir ∷ ∀ ε μ .
             (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
              HasCallStack) ⇒
             μ AbsDir
 mkTempDir = progNamePrefix ≫ mkTempDir'
+
+----------------------------------------
 
 {- | Perform some IO with a given temporary file, created within some given dir;
      the temporary file is removed once IO is complete.  The file created is
@@ -135,26 +150,70 @@ withTempFile'' ∷ ∀ ε α ρ δ μ .
                  (MonadIO μ, MonadMask μ,
                   AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack,
                   DirAs δ, Parseable (FileType δ), RelAs ρ) ⇒
-                 δ → ρ → (FileType δ → Handle → ExceptT ε IO α) → μ α
+                 δ → ρ → (FileType δ → ℍ → ExceptT ε IO α) → μ α
 withTempFile'' d (review $ filepath ∘ _Rel_ → r) io =
   let doFile f h = parse f ≫ \ f' → io f' h
    in asIOErrorT $ System.IO.Temp.withTempFile (d ⫥ filepath ∘ _Dir_) r doFile
 
+--------------------
 
 {- | Like `withTempFile''`, but uses the system temp dir (see `tempdir`). -}
 withTempFile' ∷ ∀ ε α ρ μ .
                 (MonadIO μ, MonadMask μ,
                  AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack,
                  RelAs ρ) ⇒
-                ρ → (AbsFile → Handle → ExceptT ε IO α) → μ α
+                ρ → (AbsFile → ℍ → ExceptT ε IO α) → μ α
 withTempFile' r io = tempdir ≫ \ d → withTempFile'' d r io
 
-{- | Like `withTempFile''`, but uses the system temp dir (see `tempdir`). -}
+----------------------------------------
+
+{- | Like `withTempFile'`, but the program name for the temp file template. -}
 withTempFile ∷ ∀ ε α μ .
                (MonadIO μ, MonadMask μ,
                 AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-               (AbsFile → Handle → ExceptT ε IO α) → μ α
+               (AbsFile → ℍ → ExceptT ε IO α) → μ α
 withTempFile io = progNamePrefix ≫ \ p → withTempFile' p io
+
+----------------------------------------
+
+withTempFH ∷ ∀ ε β α μ .
+             (MonadIO μ, MonadMask μ,
+              AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack) ⇒
+             TextEncoding → NewlineMode → (ℍ → β → IO ()) → β
+           → (ℍ → ExceptT ε IO α) → μ α
+
+withTempFH enc nlm writer content io =
+  withTempFile ( \ fn fh → do
+                   unlink fn
+                   liftIO $ do
+                     hSetEncoding     fh enc
+                     hSetNewlineMode  fh nlm
+                     writer           fh content
+                     hSeek            fh AbsoluteSeek 0
+                   io fh
+               )
+
+--------------------
+
+withUTF8TempFH ∷ ∀ ε α μ .
+                 (MonadIO μ, MonadMask μ,
+                  AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack) ⇒
+                 𝕋 → (ℍ → ExceptT ε IO α) → μ α
+
+{- | Provide a filehandle to an already-deleted file, that has had data written
+     to it (in UTF8-Text), but has been seek()ed (sought?) back to the start. -}
+withUTF8TempFH = withTempFH utf8 nativeNewlineMode TextIO.hPutStrLn
+
+--------------------
+
+withBinaryTempFH ∷ ∀ ε α μ .
+                 (MonadIO μ, MonadMask μ,
+                  AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack) ⇒
+                 𝕋 → (ℍ → ExceptT ε IO α) → μ α
+
+{- | Provide a filehandle to an already-deleted file, that has had data written
+     to it (as binary), but has been seek()ed (sought?) back to the start. -}
+withBinaryTempFH = withTempFH char8 noNewlineTranslation TextIO.hPutStrLn
 
 ----------------------------------------
 
@@ -226,7 +285,7 @@ withTempDirCD' io = withTempDir (\ d → inDir d $ io d)
 writeTempFile ∷ ∀ ε τ μ .
                 (MonadIO μ, MonadMask μ,
                  AsFPathError ε, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-                TextEncoding → NewlineMode → (Handle → τ → IO ()) → τ
+                TextEncoding → NewlineMode → (ℍ → τ → IO ()) → τ
               → μ AbsFile
 writeTempFile enc nlm wrt t = withTempFile $ \ tempfn h → do
   liftIO $ do
@@ -251,7 +310,7 @@ writeTempFileUTF8   = writeTempFile utf8 nativeNewlineMode TextIO.hPutStr
 writeTempFileBinary ∷ ∀ ε μ .
                       (MonadIO μ, MonadMask μ,
                        AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
-                      ByteString → μ AbsFile
+                      𝔹𝕊 → μ AbsFile
 writeTempFileBinary = writeTempFile char8 noNewlineTranslation BS.hPutStr
 
 -- that's all, folks! ----------------------------------------------------------

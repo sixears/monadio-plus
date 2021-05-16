@@ -1,3 +1,7 @@
+1.4.3.0 2021-05-16
+==================
+- add with{UTF8,Binary}TempFH
+
 1.4.2.1 2021-05-09
 ==================
 - litter the landscape with HasCallStack wherever there is MonadError
