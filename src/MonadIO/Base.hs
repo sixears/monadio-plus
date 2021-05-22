@@ -61,7 +61,8 @@ chmod perms fn = asIOError $ setFileMode (fn ⫥ filepath) perms
 
 ----------------------------------------
 
-unlink ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, FileAs γ) ⇒
+unlink ∷ ∀ ε γ μ .
+         (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, FileAs γ) ⇒
          γ → μ ()
 unlink (review _File_ → fn) = asIOError $ removeLink (fn ⫥ filepath)
 

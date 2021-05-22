@@ -1,3 +1,7 @@
+1.4.4.0 2021-05-22
+==================
+- rework MonadIO.Temp, now providing withTempfile* & tempfile*
+
 1.4.3.0 2021-05-16
 ==================
 - add with{UTF8,Binary}TempFH
