@@ -6,7 +6,7 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.Directory
-  ( inDir, mkdir, mkpath, nuke )
+  ( chdir, inDir, mkdir, mkpath, nuke )
 where
 
 -- base --------------------------------
@@ -28,7 +28,7 @@ import Data.Function.Unicode  ( (∘) )
 -- directory ---------------------------
 
 import System.Directory  ( createDirectory, removePathForcibly
-                         , withCurrentDirectory )
+                         , setCurrentDirectory, withCurrentDirectory )
 
 -- exceptions --------------------------
 
@@ -71,6 +71,13 @@ import MonadIO.Base   ( chmod )
 import MonadIO.FStat  ( FExists( FExists, NoFExists ), fexists, lfexists )
 
 --------------------------------------------------------------------------------
+
+chdir ∷ ∀ ε δ μ .
+        (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+        δ → μ ()
+chdir (review filepath → d) = asIOError $ setCurrentDirectory d
+
+----------------------------------------
 
 {- | Perform IO with the dir *temporarily* changed to a given directory. -}
 inDir ∷ (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒

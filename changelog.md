@@ -1,3 +1,7 @@
+1.4.5.0 2021-05-25
+==================
+- add `chdir`
+
 1.4.4.0 2021-05-22
 ==================
 - rework MonadIO.Temp, now providing withTempfile* & tempfile*
