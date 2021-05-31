@@ -52,26 +52,52 @@ library
                      , MonadIO.FPath
                      , MonadIO.FStat
                      , MonadIO.OpenFile
+                     , MonadIO.Process
+                     , MonadIO.Process.ExitStatus
+                     , MonadIO.Process.MakeProc
+                     , MonadIO.Process.MkStream
+                     , MonadIO.Process.OutputDefault
+                     , MonadIO.Process.Signal
                      , MonadIO.Tasty
                      , MonadIO.Temp
                      , MonadIO.T.MonadIO
 
   -- modules included in this library but not exported.
-  other-modules:       MonadIO.Base, MonadIO.T.ReadlinkTestCases
+  other-modules:       MonadIO.Base
+                     , MonadIO.Process.CreateProc
+                     , MonadIO.T.ReadlinkTestCases
 
-  default-extensions:  NoImplicitPrelude
+  default-extensions: ExistentialQuantification
+                    , FlexibleContexts
+                    , FlexibleInstances
+                    , FunctionalDependencies
+                    , GeneralizedNewtypeDeriving
+                    , LambdaCase
+                    , InstanceSigs
+                    , MultiParamTypeClasses
+                    , NoImplicitPrelude
+                    , OverloadedStrings
+                    , PatternSynonyms
+                    , QuasiQuotes
+                    , RankNTypes
+                    , ScopedTypeVariables
+                    , UnicodeSyntax
+                    , ViewPatterns
   -- LANGUAGE extensions used by modules in this package.
   other-extensions:
 
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, bytestring, containers
-                     , data-textual, directory, exceptions, filepath, lens, mtl
-                     , safe, tasty, tasty-hunit, temporary, text, unix
+                     , data-default, data-textual, directory, exceptions, exited
+                     , filepath, lens, mtl, process, safe, tasty, tasty-hunit
+                     , temporary, text, text-printer, unix
 
+                     , env-plus      >= 1.0.0.1
                      , fpath         >= 1.1.4.1
                      , fstat         >= 1.0.1.0
+                     , has-callstack >= 1.0.1.0
                      , monaderror-io >= 1.1.0.1
-                     , more-unicode  >= 0.0.14.0
+                     , more-unicode  >= 0.0.15.0
                      , tasty-plus    >= 1.5.0.0
                      , tfmt          >= 0.2.4.0
 

@@ -67,7 +67,7 @@ import qualified  System.Posix.Files  as  Files
 ------------------------------------------------------------
 
 import MonadIO.Directory   ( mkdir, mkpath )
-import MonadIO.OpenFile    ( writeExFileUTF8 )
+import MonadIO.OpenFile    ( writeExFile )
 
 --------------------------------------------------------------------------------
 
@@ -104,7 +104,7 @@ testInTempDirFS fs setup =
               AbsDir → TestFileSpec → μ ()
       mkTFS p (TFSFile f m t) = do
         mkpath (f ⊣ parent) 0o700
-        writeExFileUTF8 @AbsFile m (p ⫻ f) t
+        writeExFile @_ @_ @AbsFile m (p ⫻ f) t
       mkTFS p (TFSDir  d m)   = mkdir @_ @AbsDir (p ⫻ d) m
       mkTFS p (TFSSymL f t)   =
         asIOError $ Files.createSymbolicLink t ((p ⫻ f ∷ AbsFile) ⫥ filepath)

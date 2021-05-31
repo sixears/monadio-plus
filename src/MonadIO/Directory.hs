@@ -72,31 +72,43 @@ import MonadIO.FStat  ( FExists( FExists, NoFExists ), fexists, lfexists )
 
 --------------------------------------------------------------------------------
 
+{- | Change working directory. -}
 chdir ∷ ∀ ε δ μ .
         (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-        δ → μ ()
+        δ    -- ^ directory to change to
+      → μ ()
 chdir (review filepath → d) = asIOError $ setCurrentDirectory d
 
 ----------------------------------------
 
 {- | Perform IO with the dir *temporarily* changed to a given directory. -}
 inDir ∷ (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-         δ → ExceptT ε IO α → μ α
+        δ              -- ^ directory to work in
+      → ExceptT ε IO α -- ^ IO to perform in the given directory
+      → μ α
 inDir (review $ filepath ∘ _Dir_ → d) io =
   join ∘ asIOError $ withCurrentDirectory d (ѥ io)
 
 ----------------------------------------
 
+{- | Forcibly remove a file or directory (including any descendents). -}
 nuke ∷ ∀ ε ρ μ .
        (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, AsFilePath ρ) ⇒
-       ρ → μ ()
+       ρ    -- ^ file/dir to remove
+     → μ ()
 nuke (review filepath → fp) = asIOError $ removePathForcibly fp
 
 ----------------------------------------
 
+{- | Create a (single) directory.  Will error if the directory already exists
+     (either as a directory or a file), or the parent directory does not exist
+     or is not writable by the current user.
+ -}
 mkdir ∷ ∀ ε δ μ .
         (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, DirAs δ) ⇒
-        δ → FileMode → μ ()
+        δ        -- ^ directory to create
+      → FileMode -- ^ permissions for the directory
+      → μ ()
 mkdir d p = do
   let _mkdir = asIOError ∘ createDirectory ∘ (review $ filepath ∘ _Dir_)
   pre_exists ← lfexists d
@@ -117,7 +129,9 @@ mkpath ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallSt
                     MonadCatch μ, DirAs δ,
                     HasParentMay δ, HasParentMay (DirType δ),
                     DirType δ ~ DirType (DirType δ), δ ~ DirType δ) ⇒
-         δ → FileMode → μ ()
+         δ        -- ^ directory to create
+       → FileMode -- ^ permissions to apply to any *newly created* directories
+       → μ ()
 mkpath d p = do
   to_make ← filterM (fmap (≡ NoFExists) ∘ fexists) (parents' d)
   case headMay to_make of

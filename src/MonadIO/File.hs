@@ -29,9 +29,6 @@ module MonadIO.File
 
   , fileFoldLinesUTF8, fileFoldLinesH
 
-  , readFlags, readWriteFlags, readWriteExFlags, readWriteNoTruncFlags
-  , writeFlags, writeExFlags, writeNoTruncFlags, appendFlags
-
   , tests
   )
 where
@@ -42,12 +39,10 @@ import Prelude  ( error )
 
 import Control.Monad           ( return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Bool               ( Bool( False, True ) )
 import Data.Either             ( Either )
 import Data.Eq                 ( Eq )
 import Data.Function           ( ($), const )
 import Data.List               ( isSuffixOf, last, or )
-import Data.Maybe              ( Maybe( Just, Nothing ) )
 import Data.String             ( String )
 import GHC.Stack               ( HasCallStack )
 import System.Exit             ( ExitCode )
@@ -101,10 +96,11 @@ import MonadError.IO.Error  ( AsIOError, IOError )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Bool     ( 𝔹 )
+import Data.MoreUnicode.Bool     ( 𝔹, pattern 𝕿, pattern 𝕱 )
 import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
 import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
-import Data.MoreUnicode.Maybe    ( 𝕄 )
+import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
+
 import Data.MoreUnicode.Monad    ( (≫) )
 import Data.MoreUnicode.Monoid   ( ю )
 import Data.MoreUnicode.Natural  ( ℕ )
@@ -114,6 +110,7 @@ import Data.MoreUnicode.Text     ( 𝕋 )
 -- mtl ---------------------------------
 
 import Control.Monad.Except  ( MonadError )
+import Control.Monad.Trans   ( lift )
 
 -- safe --------------------------------
 
@@ -165,75 +162,6 @@ import MonadIO.T.ReadlinkTestCases  ( readExp, readlinkTestCases, resolveExp
 
 --------------------------------------------------------------------------------
 
-{- | OpenFileFlags suitable for reading. -}
-readFlags ∷ OpenFileFlags
-readFlags = OpenFileFlags { append = False, exclusive = False, noctty = False,
-                             nonBlock = False, trunc = False }
---------------------
-
-{- | OpenFileFlags suitable for read-write opens /with pre-truncation/
-     (analogous to writeFlags) . -}
-readWriteFlags ∷ OpenFileFlags
-readWriteFlags = OpenFileFlags { append = False, exclusive = False
-                               , noctty = False, nonBlock = False
-                               , trunc = True
-                               }
-
---------------------
-
-{- | OpenFileFlags suitable for read-write opens /with pre-truncation/
-     (analogous to writeFlags) . -}
-readWriteNoTruncFlags ∷ OpenFileFlags
-readWriteNoTruncFlags = OpenFileFlags { append = False, exclusive = False
-                                      , noctty = False, nonBlock = False
-                                      , trunc = False
-                                      }
-
---------------------
-
-{- | OpenFileFlags suitable for read-write opens, with exclusive (file must
-     not pre-exist (man file(2):O_EXCL). -}
-readWriteExFlags ∷ OpenFileFlags
-readWriteExFlags = OpenFileFlags { append = False, exclusive = True
-                                 , noctty = False, nonBlock = False
-                                 , trunc = False
-                                 }
-
---------------------
-
-{- | OpenFileFlags suitable for writing /with pre-truncation/; this is just the
-      `trunc` (man file(2):O_TRUNC) flag. -}
-writeFlags ∷ OpenFileFlags
-writeFlags = OpenFileFlags { append = False, exclusive = False, noctty = False
-                           , nonBlock = False, trunc = True }
-
---------------------
-
-{- | OpenFileFlags suitable for writing /without pre-truncating/. -}
-writeNoTruncFlags ∷ OpenFileFlags
-writeNoTruncFlags = OpenFileFlags { append = False, exclusive = False
-                                  , noctty = False, nonBlock = False
-                                  , trunc = False }
-
---------------------
-
-{- | OpenFileFlags suitable for writing a new file; this is just the `exclusive`
-     (man file(2):O_EXCL) flag.
-     This seems redundant in practice, but I've added it here as a belt'n'braces
-     thing.
--}
-writeExFlags ∷ OpenFileFlags
-writeExFlags = OpenFileFlags { append = False, exclusive = True, noctty = False,
-                               nonBlock = False, trunc = False }
-
---------------------
-
-{- | OpenFileFlags suitable for appending; this is just the `append`
-     (man file(2):O_APPEND) flag. -}
-appendFlags ∷ OpenFileFlags
-appendFlags = OpenFileFlags { append = True, exclusive = False, noctty = False,
-                              nonBlock = False, trunc = False }
-
 -- fileAccess ----------------------------------------------
 
 data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX
@@ -246,13 +174,13 @@ access ∷ ∀ ε ρ μ .
          AccessMode → ρ → μ (𝕄 𝔹)
 access mode ((⫥ filepath) → fp) = asIOErrorY $ go mode fp
   where go ∷ AccessMode → FilePath → IO 𝔹
-        go ACCESS_R   p = Files.fileAccess (p ⫥ filepath) True  False False
-        go ACCESS_W   p = Files.fileAccess (p ⫥ filepath) False True  False
-        go ACCESS_X   p = Files.fileAccess (p ⫥ filepath) False False True
-        go ACCESS_RW  p = Files.fileAccess (p ⫥ filepath) True  True  False
-        go ACCESS_RX  p = Files.fileAccess (p ⫥ filepath) True  False True
-        go ACCESS_WX  p = Files.fileAccess (p ⫥ filepath) False True  True
-        go ACCESS_RWX p = Files.fileAccess (p ⫥ filepath) True  True  True
+        go ACCESS_R   p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕱 𝕱
+        go ACCESS_W   p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕿  𝕱
+        go ACCESS_X   p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕱 𝕿
+        go ACCESS_RW  p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕿  𝕱
+        go ACCESS_RX  p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕱 𝕿
+        go ACCESS_WX  p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕿  𝕿
+        go ACCESS_RWX p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕿  𝕿
 
 {- | Simple shortcut for file (or directory) is writable by this user; `Nothing`
      is returned if file does not exist. -}
@@ -269,15 +197,15 @@ _isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ, HasCallStack,
                   γ → 𝕄 FStat -> μ (𝕄 𝕋)
 
 _isWritableFile (review _File_ → f) st =
-  let rJust = return ∘ Just
+  let rJust = return ∘ 𝕵
    in case st of
-        Nothing  → rJust $ [fmt|%T does not exist|] f
-        Just stp → if Directory ≡ ftype stp
+        𝕹  → rJust $ [fmt|%T does not exist|] f
+        𝕵 stp → if Directory ≡ ftype stp
                    then rJust $ [fmt|%T is a directory|] f
                    else writable f ≫ \ case
-                          Nothing    → rJust $ [fmt|no such file %T|] f
-                          Just True  → return Nothing
-                          Just False → rJust $ [fmt|cannot write to %T|] f
+                          𝕹    → rJust $ [fmt|no such file %T|] f
+                          𝕵 𝕿  → return 𝕹
+                          𝕵 𝕱 → rJust $ [fmt|cannot write to %T|] f
 
 ----------------------------------------
 
@@ -295,7 +223,7 @@ isWritableFileTests ∷ TestTree
 isWritableFileTests =
   let check f exp =
         testCase (toString f) $
-                ѥ (isWritableFile @IOError f) ≫ assertRight (Just exp @=?)
+                ѥ (isWritableFile @IOError f) ≫ assertRight (𝕵 exp @=?)
    in testGroup "_isWritableFile"
                 [ check [absfile|/etc|] "/etc is a directory" ]
 
@@ -307,14 +235,14 @@ isWritableDir ∷ ∀ ε γ μ .
                 γ -> μ (𝕄 𝕋)
 
 isWritableDir d =
-  let rJust = return ∘ Just
+  let rJust = return ∘ 𝕵
    in stat d ≫ \ case
-        Nothing  → rJust $ [fmt|%T does not exist|] d
-        Just stp → if Directory ≡ ftype stp
+        𝕹  → rJust $ [fmt|%T does not exist|] d
+        𝕵 stp → if Directory ≡ ftype stp
                    then writable d ≫ \ case
-                          Nothing    → rJust $ [fmt|no such directory %T|] d
-                          Just True  → return Nothing
-                          Just False → rJust $ [fmt|cannot write to %T|] d
+                          𝕹    → rJust $ [fmt|no such directory %T|] d
+                          𝕵 𝕿  → return 𝕹
+                          𝕵 𝕱 → rJust $ [fmt|cannot write to %T|] d
                    else -- remove trailing '/', since the point is that d is
                         -- not a directory
                         rJust $ [fmt|%s is not a directory|]
@@ -325,9 +253,9 @@ isWritableDir d =
 isWritableDirTests ∷ TestTree
 isWritableDirTests =
   let testE f e = testCase (toString f) $
-                    ѥ (isWritableDir @IOError f) ≫ assertRight (Just e @=?)
+                    ѥ (isWritableDir @IOError f) ≫ assertRight (𝕵 e @=?)
       testN f   = testCase (toString f) $
-                    ѥ (isWritableDir @IOError f) ≫ assertRight (Nothing @=?)
+                    ѥ (isWritableDir @IOError f) ≫ assertRight (𝕹 @=?)
    in testGroup "isWritableDir"
             [ testN [absdir|/tmp/|]
             , testE [absdir|/nonsuch/|]
@@ -351,18 +279,18 @@ fileWritable ∷ ∀ γ ε μ .
                γ → μ (𝕄 𝕋)
 fileWritable (review _File_ → fn) = do
   stat fn ≫ \ case
-    Just st → _isWritableFile fn (Just st)
-    Nothing → -- fn does not exist; does it have a writeable dir parent?
+    𝕵 st → _isWritableFile fn (𝕵 st)
+    𝕹 → -- fn does not exist; does it have a writeable dir parent?
               isWritableDir (fn ⊣ parent) ≫ \ case
-                   Nothing → return Nothing
-                   Just e  → return ∘ Just $ [fmt|%t (%T)|] e fn
+                   𝕹 → return 𝕹
+                   𝕵 e  → return ∘ 𝕵 $ [fmt|%t (%T)|] e fn
 
 ----------
 
 fileWritableTests ∷ TestTree
 fileWritableTests =
   let testE f e = testCase (toString f) $
-                    ѥ (fileWritable @_ @IOError f) ≫ assertRight (Just e @=?)
+                    ѥ (fileWritable @_ @IOError f) ≫ assertRight (𝕵 e @=?)
       testE' f e = testCase (toString f) $
                      ѥ (fileWritable @_ @IOError f) ≫ assertRight (e @=?)
 
@@ -378,7 +306,7 @@ fileWritableTests =
             , testE [absfile|/etc|]
                     "/etc is a directory"
 
-            , testE' [absfile|/dev/null|] Nothing
+            , testE' [absfile|/dev/null|] 𝕹
             ]
 
 ----------------------------------------
@@ -388,22 +316,22 @@ fileFoldLinesUTF8 ∷ ∀ ε γ α μ .
                     (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ,
                      HasCallStack) ⇒
                     α → (α → 𝕋 → IO α) → γ → μ α
-fileFoldLinesUTF8 a io fn = withReadFileUTF8 fn $ fileFoldLinesH a io
+fileFoldLinesUTF8 a io fn = withFile UTF8 FileR fn $ lift ∘ fileFoldLinesH a io
 
 fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
 fileFoldLinesH a io h = do
   eof ← liftIO $ hIsEOF h
   case eof of
-    True  → return a
-    False → do l ← liftIO $ TextIO.hGetLine h
-               a' ← io a l
-               fileFoldLinesH a' io h
+    𝕿 → return a
+    𝕱 → do l ← liftIO $ TextIO.hGetLine h
+           a' ← io a l
+           fileFoldLinesH a' io h
 
 ----------------------------------------
 
 {- | An open RW handle to /dev/null. -}
 devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ Handle
-devnull = openFileReadWriteNoTruncBinary Nothing [absfile|/dev/null|]
+devnull = openFile Binary (FileRWNoTrunc 𝕹) [absfile|/dev/null|]
 
 ----------------------------------------
 
@@ -419,23 +347,23 @@ readlink ∷ ∀ ε γ μ .
 readlink (review filepath → fp) = do
   r ← asIOError $ readSymbolicLink fp
   case headMay r of
-    Nothing  → error $ [fmt|empty symlink found at '%s'|] fp
-    Just '/' → -- last is safe, as fp is non-empty, given that headMay fp
-               -- is not Nothing
+    𝕹  → error $ [fmt|empty symlink found at '%s'|] fp
+    𝕵 '/' → -- last is safe, as fp is non-empty, given that headMay fp
+               -- is not 𝕹
                case last r of
                  '/' → AbsD ⊳ pResolveDir root r
                  _   → AbsF ⊳ pResolveDir root r
-    Just _   → do d ← pResolve (fp ⊣ System.FilePath.Lens.directory)
+    𝕵 _   → do d ← pResolve (fp ⊣ System.FilePath.Lens.directory)
                    -- last is safe, as fp is non-empty, given that headMay fp
-                   -- is not Nothing
-                  case last r of
-                    '/' → AbsD ⊳ pResolveDir d r
-                    _   → if or [ r ∈ [ ".", ".." ]
-                                , "/." `isSuffixOf` r
-                                , "/.." `isSuffixOf` r
-                                ]
-                          then AbsD ⊳ pResolveDir d r
-                          else AbsF ⊳ pResolveDir d r
+                   -- is not 𝕹
+               case last r of
+                 '/' → AbsD ⊳ pResolveDir d r
+                 _   → if or [ r ∈ [ ".", ".." ]
+                             , "/." `isSuffixOf` r
+                             , "/.." `isSuffixOf` r
+                             ]
+                       then AbsD ⊳ pResolveDir d r
+                       else AbsF ⊳ pResolveDir d r
 
 ----------
 
@@ -477,7 +405,7 @@ resolvelink ∷ ∀ ε γ μ .
 resolvelink fp = do
   r ← readlink fp
   ftype ⊳⊳ lstat r ≫ \ case
-    Just SymbolicLink → resolvelink r
+    𝕵 SymbolicLink → resolvelink r
     _                 → return r
 
 ----------
