@@ -1,6 +1,6 @@
 module MonadIO.Process.MakeProc
   ( CreateProc, MakeProc( makeProc )
-  , cmd_spec, cp_opts, std_err, std_in, std_out )
+  , cmd_spec, std_err, std_in, std_out )
 where
 
 import Prelude  ( error )
@@ -69,13 +69,13 @@ import Data.Text  ( unpack )
 ------------------------------------------------------------
 
 import MonadIO.Error.CreateProcError  ( AsCreateProcError( _CreateProcErr ) )
-import MonadIO.Process.CmdSpec        ( CmdSpec, HasCmdExe( cmdExe ), cmdArgsS )
-import MonadIO.Process.CreateProc     ( CreateProc(..), cp_opts, cmd_spec
-                                      , std_err, std_in, std_out )
-import MonadIO.Process.CreateProcOpts ( CreateGroup( CreateGroup )
-                                      , CreateProcOpts
-                                      , cmdName, createGroup, cwd, env
+import MonadIO.Process.CmdSpec        ( CmdSpec, CreateGroup( CreateGroup )
+                                      , HasCmdExe( cmdExe )
+                                      , HasCmdSpec( cmdName, createGroup )
+                                      , cmdArgsS, cwd, env
                                       )
+import MonadIO.Process.CreateProc     ( CreateProc(..)
+                                      , cmd_spec, std_err, std_in, std_out )
 import MonadIO.Process.MkStream       ( MkStream( mkStream ) )
 
 --------------------------------------------------------------------------------
@@ -123,68 +123,63 @@ class MakeProc ω where
   makeProc ∷ (MonadIO μ, MkStream σ,
               AsCreateProcError ε, AsFPathError ε, AsIOError ε, MonadError ε μ,
               HasCallStack) ⇒
-             CreateProcOpts → σ → CmdSpec → μ (ProcessHandle, ω)
+             σ → CmdSpec → μ (ProcessHandle, ω)
 
 instance MakeProc () where
-  makeProc opts stdIn c = do
+  makeProc stdIn c = do
     inH ← mkStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = Inherit
                                  , _std_err  = Inherit
-                                 , _cp_opts  = opts
                                  }
     case cp of
       (𝕹, 𝕹, 𝕹, h) → return (h, ())
       _                              → error "MakeProc: cannot happen (())"
 
 instance MakeProc ℍ where
-  makeProc opts stdIn c = do
+  makeProc stdIn c = do
     inH ← mkStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = CreatePipe
                                  , _std_err  = Inherit
-                                 , _cp_opts  = opts
                                  }
     case cp of
       (𝕹, 𝕵 outH, 𝕹, h) → return (h, outH)
       _                                → error "MakeProc: cannot happen (H)"
 
 instance MakeProc (ℍ,()) where
-  makeProc opts stdIn c = do
+  makeProc stdIn c = do
     inH ← mkStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = CreatePipe
                                  , _std_err  = NoStream
-                                 , _cp_opts  = opts
                                  }
     case cp of
       (𝕹, 𝕵 outH, 𝕹, h) → return (h, (outH,()))
       _                                → error "MakeProc: cannot happen (H,())"
 
 instance MakeProc ((),ℍ) where
-  makeProc opts stdIn c = do
+  makeProc stdIn c = do
     inH ← mkStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = NoStream
                                  , _std_err  = CreatePipe
-                                 , _cp_opts  = opts
                                  }
     case cp of
       (𝕹, 𝕹, 𝕵 errH, h) → return (h, ((),errH))
       _                                → error "MakeProc: cannot happen ((),H)"
 
 instance MakeProc ((),()) where
-  makeProc opts stdIn c = do
+  makeProc stdIn c = do
     inH ← mkStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = NoStream
                                  , _std_err  = NoStream
-                                 , _cp_opts  = opts
                                  }
     -- I had originally had irrefutable patterns here, e.g.,
     --   ~(𝕹, 𝕹, 𝕵 errH, h) ← createProc_ ...
@@ -196,13 +191,12 @@ instance MakeProc ((),()) where
       _                              → error "MakeProc: cannot happen ((),())"
 
 instance MakeProc (ℍ,ℍ) where
-  makeProc opts stdIn c = do
+  makeProc stdIn c = do
     inH ← mkStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = CreatePipe
                                  , _std_err  = CreatePipe
-                                 , _cp_opts  = opts
                                  }
     case cp of
       (𝕹, 𝕵 outH, 𝕵 errH, h) → return (h, (outH,errH))

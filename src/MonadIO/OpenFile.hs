@@ -13,6 +13,8 @@
 
 module MonadIO.OpenFile
   ( FileOpenMode(..), HEncoding( Binary, NoEncoding, UTF8 )
+  , fileOpenMode
+
   , appendFile, openFile, readFile, readFileUTF8Lenient, withFile, writeExFile
   , writeFile, writeNoTruncFile
 
@@ -242,22 +244,25 @@ openFile enc fomode fn = asIOError $ openFile_ enc fomode fn
 
 --------------------
 
-readFile ∷ ∀ ε ω γ μ .
-           (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HGetContents ω) =>
-           γ -> μ ω
+readFile ∷ ∀ ε τ γ μ .
+           (MonadIO μ, FileAs γ,
+            AsIOError ε, MonadError ε μ, HasCallStack, HGetContents τ) ⇒
+           γ -> μ τ
 readFile fn = let result = withFile enc FileR fn hGetContents
-                  enc = impliedEncodingM result
+                  enc    = impliedEncodingM result
                in result
 
 ----------------------------------------
 
 {- | Perform an IO action (that may throw a `MonadError`) in the context of an
      open filehandle . -}
-withFile ∷ ∀ ε ω γ μ .
+withFile ∷ ∀ ε α γ μ .
            (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-           HEncoding → FileOpenMode → γ → (Handle → ExceptT ε IO ω) → μ ω
+           HEncoding → FileOpenMode → γ → (Handle → ExceptT ε IO α) → μ α
 withFile enc fomode fn io =
   join $ asIOError $ bracket (openFile_ enc fomode fn) System.IO.hClose (ѥ ∘ io)
+
+----------------------------------------
 
 {- | Write a file in an implied encoding (see `impliedEncoding`).
      `perms`, if not 𝕹, will be used to create the file if it doesn't
@@ -272,6 +277,8 @@ writeFile ∷ ∀ ε τ γ μ .
 writeFile perms fn t =
   withFile (impliedEncoding t) (FileW perms) fn (flip hWriteContents t)
 
+--------------------
+
 writeNoTruncFile ∷ ∀ ε τ γ μ .
                    (MonadIO μ, HWriteContents τ, FileAs γ,
                     AsIOError ε, MonadError ε μ, HasCallStack) ⇒
@@ -279,12 +286,16 @@ writeNoTruncFile ∷ ∀ ε τ γ μ .
 writeNoTruncFile perms fn t =
   withFile (impliedEncoding t) (FileWNoTrunc perms) fn (flip hWriteContents t)
 
+--------------------
+
 writeExFile ∷ ∀ ε τ γ μ .
               (MonadIO μ, HWriteContents τ, FileAs γ,
                AsIOError ε, MonadError ε μ, HasCallStack) ⇒
               FileMode → γ → τ → μ ()
 writeExFile perms fn t =
   withFile (impliedEncoding t) (FileWEx perms) fn (flip hWriteContents t)
+
+----------------------------------------
 
 {- | Append to a file.  `perms`, if not 𝕹, will be used to create the file
      if it doesn't exist.  If it does exist, `perms` has no impact (use `chmod`
@@ -297,6 +308,8 @@ appendFile ∷ ∀ ε τ γ μ .
              𝕄 FileMode → γ → τ → μ ()
 appendFile perms fn t =
   withFile (impliedEncoding t) (FileA perms) fn (flip hWriteContents t)
+
+------------------------------------------------------------
 
 withFileTests ∷ TestTree
 withFileTests =

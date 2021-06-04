@@ -140,10 +140,6 @@ import Text.Fmt  ( fmt )
 
 import qualified  System.Posix.Files  as  Files
 import System.Posix.Files  ( readSymbolicLink )
-import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
-                                          , noctty, nonBlock, trunc )
-                           , noctty, nonBlock
-                           )
 
 ------------------------------------------------------------
 --                     local imports                      --

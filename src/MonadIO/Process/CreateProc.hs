@@ -1,5 +1,5 @@
 module MonadIO.Process.CreateProc
-  ( CreateProc(..), cp_opts, cmd_spec, std_in, std_out, std_err )
+  ( CreateProc(..), cmd_spec, std_in, std_out, std_err )
 where
 
 -- base-unicode-symbols ----------------
@@ -18,8 +18,6 @@ import System.Process  ( StdStream )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Process.CreateProcOpts  ( CreateProcOpts
-                                       , HasCreateProcOpts( createProcOpts ) )
 import MonadIO.Process.CmdSpec         ( CmdSpec, HasCmdArgs( cmdArgs )
                                        , HasCmdExe( cmdExe )
                                        , HasCmdSpec( cmdSpec )
@@ -33,7 +31,6 @@ data CreateProc = CreateProc { _cmd_spec ∷ CmdSpec
                              , _std_in   ∷ StdStream
                              , _std_out  ∷ StdStream
                              , _std_err  ∷ StdStream
-                             , _cp_opts  ∷ CreateProcOpts
                              }
 
 
@@ -48,12 +45,6 @@ std_out = lens _std_out (\ cp st → cp { _std_out = st })
 
 std_err ∷ Lens' CreateProc StdStream
 std_err = lens _std_err (\ cp st → cp { _std_err = st })
-
-cp_opts ∷ Lens' CreateProc CreateProcOpts
-cp_opts = lens _cp_opts (\ cp cpo → cp { _cp_opts = cpo })
-
-instance HasCreateProcOpts CreateProc where
-  createProcOpts = cp_opts
 
 instance HasCmdSpec CreateProc where
   cmdSpec = cmd_spec

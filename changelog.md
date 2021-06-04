@@ -1,3 +1,11 @@
+1.4.7.0 2021-06-03
+==================
+- export MonadIO.OpenFile.fileOpenMode
+
+1.4.6.0 2021-06-01
+==================
+- add MonadIO.Process.system (and plenty of supporting bits)
+
 1.4.5.0 2021-05-25
 ==================
 - add `chdir`

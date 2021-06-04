@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.5.0
+version:             1.4.7.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -48,15 +48,19 @@ library
   -- Modules exported by the library.
   exposed-modules:     MonadIO
                      , MonadIO.Directory
+                     , MonadIO.Error.CreateProcError
                      , MonadIO.File
                      , MonadIO.FPath
                      , MonadIO.FStat
+                     , MonadIO.Handle
                      , MonadIO.OpenFile
                      , MonadIO.Process
+                     , MonadIO.Process.CmdSpec
                      , MonadIO.Process.ExitStatus
                      , MonadIO.Process.MakeProc
                      , MonadIO.Process.MkStream
                      , MonadIO.Process.OutputDefault
+                     , MonadIO.Process.OutputHandles
                      , MonadIO.Process.Signal
                      , MonadIO.Tasty
                      , MonadIO.Temp
@@ -88,11 +92,12 @@ library
 
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, bytestring, containers
-                     , data-default, data-textual, directory, exceptions, exited
-                     , filepath, lens, mtl, process, safe, tasty, tasty-hunit
-                     , temporary, text, text-printer, unix
+                     , data-textual, directory, exceptions, filepath
+                     , lens, mtl, process, safe, tasty, tasty-hunit, temporary
+                     , text, text-printer, unix
 
-                     , env-plus      >= 1.0.0.1
+                     , env-plus      >= 1.0.1.0
+                     , exited        >= 1.0.4.0
                      , fpath         >= 1.1.4.1
                      , fstat         >= 1.0.1.0
                      , has-callstack >= 1.0.1.0

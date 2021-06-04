@@ -71,7 +71,6 @@ instance ImpliedEncoding 𝔹𝕊 where
 instance ImpliedEncoding () where
   impliedEncodingM _ = NoEncoding
 
-
 ------------------------------------------------------------
 
 class ImpliedEncoding α ⇒ HGetContents α where
