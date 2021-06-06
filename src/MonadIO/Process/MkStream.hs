@@ -1,4 +1,5 @@
 module MonadIO.Process.MkStream
+  {-# DEPRECATED "use MonadIO.Process.MkInputStream instead" #-}
   ( MkStream( mkStream ) )
 where
 

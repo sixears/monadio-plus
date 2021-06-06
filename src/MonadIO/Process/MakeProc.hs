@@ -76,7 +76,7 @@ import MonadIO.Process.CmdSpec        ( CmdSpec, CreateGroup( CreateGroup )
                                       )
 import MonadIO.Process.CreateProc     ( CreateProc(..)
                                       , cmd_spec, std_err, std_in, std_out )
-import MonadIO.Process.MkStream       ( MkStream( mkStream ) )
+import MonadIO.Process.MkInputStream  ( MkInputStream( mkIStream ) )
 
 --------------------------------------------------------------------------------
 
@@ -120,14 +120,14 @@ createProc_ cp = do
 
 class MakeProc ω where
   {- | Create a process handle from a `CreateProc` specification. -}
-  makeProc ∷ (MonadIO μ, MkStream σ,
+  makeProc ∷ (MonadIO μ, MkInputStream σ,
               AsCreateProcError ε, AsFPathError ε, AsIOError ε, MonadError ε μ,
               HasCallStack) ⇒
              σ → CmdSpec → μ (ProcessHandle, ω)
 
 instance MakeProc () where
   makeProc stdIn c = do
-    inH ← mkStream stdIn
+    inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = Inherit
@@ -139,7 +139,7 @@ instance MakeProc () where
 
 instance MakeProc ℍ where
   makeProc stdIn c = do
-    inH ← mkStream stdIn
+    inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = CreatePipe
@@ -151,7 +151,7 @@ instance MakeProc ℍ where
 
 instance MakeProc (ℍ,()) where
   makeProc stdIn c = do
-    inH ← mkStream stdIn
+    inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = CreatePipe
@@ -163,7 +163,7 @@ instance MakeProc (ℍ,()) where
 
 instance MakeProc ((),ℍ) where
   makeProc stdIn c = do
-    inH ← mkStream stdIn
+    inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = NoStream
@@ -175,7 +175,7 @@ instance MakeProc ((),ℍ) where
 
 instance MakeProc ((),()) where
   makeProc stdIn c = do
-    inH ← mkStream stdIn
+    inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = NoStream
@@ -192,7 +192,7 @@ instance MakeProc ((),()) where
 
 instance MakeProc (ℍ,ℍ) where
   makeProc stdIn c = do
-    inH ← mkStream stdIn
+    inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
                                  , _std_in   = inH
                                  , _std_out  = CreatePipe

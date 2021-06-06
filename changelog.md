@@ -1,3 +1,7 @@
+1.4.8.0 2021-06-06
+==================
+- rename MkStream to MkInputStream (deprecate MkStream); add FileAs instance to MkInputStream
+
 1.4.7.0 2021-06-03
 ==================
 - export MonadIO.OpenFile.fileOpenMode

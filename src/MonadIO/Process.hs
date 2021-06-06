@@ -44,13 +44,13 @@ import System.Process  ( ProcessHandle, waitForProcess )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Error.CreateProcError   ( AsCreateProcError )
-import MonadIO.Process.CmdSpec         ( CmdSpec )
-import MonadIO.Process.ExitStatus      ( ExitStatus( ExitSig, ExitVal ) )
-import MonadIO.Process.MakeProc        ( MakeProc, makeProc )
-import MonadIO.Process.MkStream        ( MkStream )
-import MonadIO.Process.Signal          ( Signal( Signal ) )
-import MonadIO.Process.OutputHandles   ( OutputHandles( slurp ) )
+import MonadIO.Error.CreateProcError  ( AsCreateProcError )
+import MonadIO.Process.CmdSpec        ( CmdSpec )
+import MonadIO.Process.ExitStatus     ( ExitStatus( ExitSig, ExitVal ) )
+import MonadIO.Process.MakeProc       ( MakeProc, makeProc )
+import MonadIO.Process.MkInputStream  ( MkInputStream )
+import MonadIO.Process.Signal         ( Signal( Signal ) )
+import MonadIO.Process.OutputHandles  ( OutputHandles( slurp ) )
 
 --------------------------------------------------------------------------------
 
@@ -74,8 +74,9 @@ procWait prox = do
 
 ----------------------------------------
 
-system ∷ (MonadIO μ, HasCallStack, MkStream σ,
-          MakeProc ζ, OutputHandles ζ ω,
+system ∷ ∀ ε ζ ω σ μ .
+         (MonadIO μ, HasCallStack, MkInputStream σ,
+          MakeProc ζ, OutputHandles ζ ω, HasCallStack,
           AsCreateProcError ε, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
          σ → CmdSpec → μ (ExitStatus, ω)
 
@@ -87,6 +88,7 @@ system inh cspec = do
 
 -- $ system defCPOpts (""∷ Text) (CmdSpec (CmdExe [absfile|/usr/bin/env|]) (CmdArgs []))
 
+-- :m + Data.Either Data.Text MonadIO.Error.CreateProcError FPath.AbsFile MonadError MonadIO.Process.CmdSpec
 -- splitMError @ProcError @(Either _) $ system ("" :: Text) (mkCmd [absfile|/usr/bin/env|]  [])
 
 -- that's all, folks! ----------------------------------------------------------
