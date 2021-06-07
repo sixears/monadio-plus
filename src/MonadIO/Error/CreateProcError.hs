@@ -14,6 +14,10 @@ import Text.Show          ( Show( show ) )
 
 import Data.Function.Unicode  ( (∘) )
 
+-- data-textual ------------------------
+
+import Data.Textual  ( Printable( print ) )
+
 -- fpath -------------------------------
 
 import FPath.Error.FPathError  ( AsFPathError( _FPathError ), FPathIOError )
@@ -53,6 +57,9 @@ instance HasCallstack CreateProcError where
   callstack = lens (\ (CreateProcError ioe) → ioe ⊣ callstack)
                    (\ (CreateProcError ioe) cs →
                         CreateProcError $ ioe & callstack ⊢ cs)
+
+instance Printable CreateProcError where
+  print = print ∘ unIOErr
 
 ------------------------------------------------------------
 
@@ -99,5 +106,9 @@ instance AsIOError ProcError where
 
 instance AsFPathError ProcError where
   _FPathError = _PE_FPATH_IO_ERROR ∘ _FPathError
+
+instance Printable ProcError where
+  print (PE_FPATH_IO_ERROR fpioe) = print fpioe
+  print (PE_CREATEPROC_ERROR cpe) = print cpe
 
 -- that's all, folks! ----------------------------------------------------------

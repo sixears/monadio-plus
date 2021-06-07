@@ -1,3 +1,7 @@
+1.4.9.0 2021-06-07
+==================
+- Add Printable instance of CreateProcError & ProcError
+
 1.4.8.1 2021-06-06
 ==================
 - Make FileAs instance of MkInputStream OVERLAPPABLE
