@@ -1,3 +1,7 @@
+1.4.8.1 2021-06-06
+==================
+- Make FileAs instance of MkInputStream OVERLAPPABLE
+
 1.4.8.0 2021-06-06
 ==================
 - rename MkStream to MkInputStream (deprecate MkStream); add FileAs instance to MkInputStream

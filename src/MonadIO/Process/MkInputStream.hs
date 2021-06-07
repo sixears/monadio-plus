@@ -72,7 +72,7 @@ instance MkInputStream 𝔹𝕊 where
 instance MkInputStream ℍ where
   mkIStream h = return $ UseHandle h
 
-instance FileAs γ ⇒ MkInputStream γ where
+instance {-# OVERLAPPABLE #-} FileAs γ ⇒ MkInputStream γ where
   mkIStream fn = UseHandle ⊳ openFile NoEncoding FileR fn
 
 -- that's all, folks! ----------------------------------------------------------
