@@ -1,5 +1,5 @@
 module MonadIO.Process
- ( system )
+ ( system, systemx )
 where
 
 import Prelude  ( (-), fromIntegral )
@@ -18,6 +18,10 @@ import System.Exit             ( ExitCode( ExitFailure, ExitSuccess ) )
 
 import Data.Function.Unicode  ( (∘) )
 
+-- containers-plus ---------------------
+
+import ContainersPlus.Member  ( HasMember( (∈) ) )
+
 -- fpath -------------------------------
 
 import FPath.Error.FPathError  ( AsFPathError )
@@ -30,6 +34,7 @@ import MonadError.IO.Error  ( AsIOError )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Either  ( pattern 𝕷, pattern 𝕽 )
+import Data.MoreUnicode.Lens    ( (⊣) )
 import Data.MoreUnicode.Monad   ( (≫) )
 
 -- mtl ---------------------------------
@@ -45,12 +50,14 @@ import System.Process  ( ProcessHandle, waitForProcess )
 ------------------------------------------------------------
 
 import MonadIO.Error.CreateProcError  ( AsCreateProcError )
-import MonadIO.Process.CmdSpec        ( CmdSpec )
+import MonadIO.Error.ProcExitError    ( AsProcExitError, asProcExitError )
+import MonadIO.Process.CmdSpec        ( CmdSpec, expExit )
 import MonadIO.Process.ExitStatus     ( ExitStatus( ExitSig, ExitVal ) )
 import MonadIO.Process.MakeProc       ( MakeProc, makeProc )
 import MonadIO.Process.MkInputStream  ( MkInputStream )
 import MonadIO.Process.Signal         ( Signal( Signal ) )
 import MonadIO.Process.OutputHandles  ( OutputHandles( slurp ) )
+import MonadIO.Process.ToMaybeTexts   ( ToMaybeTexts( toMaybeTexts ) )
 
 --------------------------------------------------------------------------------
 
@@ -74,21 +81,50 @@ procWait prox = do
 
 ----------------------------------------
 
-system ∷ ∀ ε ζ ω σ μ .
+{- | Execute an external process, wait for termination, return exit status and
+     whichever of stderr/stdout were implicitly requested by the return type. -}
+systemx ∷ ∀ ε ζ ω σ μ .
          (MonadIO μ, HasCallStack, MkInputStream σ,
           MakeProc ζ, OutputHandles ζ ω, HasCallStack,
           AsCreateProcError ε, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
-         σ → CmdSpec → μ (ExitStatus, ω)
+         σ       -- ^ stdin specification
+       → CmdSpec -- ^ cmd + args
+       → μ (ExitStatus, ω)
 
-system inh cspec = do
+systemx inh cspec = do
   x ← ѥ $ makeProc inh cspec
   ѥ x ≫ \case
     𝕷 e → join ∘ return $ throwError e
     𝕽 r → procWait (return r)
 
--- $ system defCPOpts (""∷ Text) (CmdSpec (CmdExe [absfile|/usr/bin/env|]) (CmdArgs []))
+-- $ system defCPOpts (""∷ Text) (CmdSpec (CmdExe [absfile|/usr/bin/env|])
+--          (CmdArgs []))
 
--- :m + Data.Either Data.Text MonadIO.Error.CreateProcError FPath.AbsFile MonadError MonadIO.Process.CmdSpec
--- splitMError @ProcError @(Either _) $ system ("" :: Text) (mkCmd [absfile|/usr/bin/env|]  [])
+-- :m + Data.Either Data.Text MonadIO.Error.CreateProcError FPath.AbsFile
+--      MonadError MonadIO.Process.CmdSpec
+-- splitMError @ProcError @(Either _) $
+--             system ("" :: Text) (mkCmd [absfile|/usr/bin/env|]  [])
+
+----------------------------------------
+
+{- | Like `system`, but throws an `AsProcExitError` if the process exits with
+     an unexpected value/signal (see `CmdSpec`), -}
+
+system ∷ ∀ ε ζ ω σ μ .
+         (MonadIO μ, MkInputStream σ, ToMaybeTexts ω,
+          MakeProc ζ, OutputHandles ζ ω, HasCallStack,
+          AsCreateProcError ε, AsFPathError ε, AsIOError ε, AsProcExitError ε,
+          MonadError ε μ, HasCallStack) ⇒
+         σ       -- ^ stdin specification
+       → CmdSpec -- ^ cmd + args
+       → μ (ExitStatus, ω)
+
+system inh cspec = do
+  (exit,w) ← systemx inh cspec
+
+  if exit ∈ (cspec ⊣ expExit)
+  then throwError $ asProcExitError cspec exit (toMaybeTexts w)
+  else return (exit,w)
+
 
 -- that's all, folks! ----------------------------------------------------------

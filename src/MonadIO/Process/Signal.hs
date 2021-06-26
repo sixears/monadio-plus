@@ -9,6 +9,7 @@ where
 import Data.Eq        ( Eq )
 import Data.Function  ( ($) )
 import Data.Maybe     ( Maybe( Just, Nothing ) )
+import Data.Ord       ( Ord )
 import Data.Word      ( Word8 )
 import Prelude        ( fromIntegral )
 import Text.Show      ( Show )
@@ -40,7 +41,7 @@ import qualified  System.Posix.Signals  as  Sig
 -------------------------------------------------------------------------------
 
 newtype Signal = Signal Word8
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 sigMap ∷ Map.Map Sig.Signal Text
 sigMap = Map.fromList [ ( Sig.nullSignal            , "NULL" ) -- "0"

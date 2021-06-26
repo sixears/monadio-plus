@@ -1,3 +1,7 @@
+1.4.10.0 2021-06-26
+===================
+- Add ProcExitError
+
 1.4.9.0 2021-06-07
 ==================
 - Add Printable instance of CreateProcError & ProcError
