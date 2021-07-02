@@ -20,7 +20,7 @@ import Data.Function.Unicode  ( (∘) )
 
 -- containers-plus ---------------------
 
-import ContainersPlus.Member  ( HasMember( (∈) ) )
+import ContainersPlus.Member  ( HasMember( (∉) ) )
 
 -- fpath -------------------------------
 
@@ -107,7 +107,7 @@ systemx inh cspec = do
 
 ----------------------------------------
 
-{- | Like `system`, but throws an `AsProcExitError` if the process exits with
+{- | Like `systemx`, but throws an `AsProcExitError` if the process exits with
      an unexpected value/signal (see `CmdSpec`), -}
 
 system ∷ ∀ ε ζ ω σ μ .
@@ -122,7 +122,7 @@ system ∷ ∀ ε ζ ω σ μ .
 system inh cspec = do
   (exit,w) ← systemx inh cspec
 
-  if exit ∈ (cspec ⊣ expExit)
+  if exit ∉ (cspec ⊣ expExit)
   then throwError $ asProcExitError cspec exit (toMaybeTexts w)
   else return (exit,w)
 

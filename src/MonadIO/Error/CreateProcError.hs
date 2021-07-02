@@ -84,7 +84,7 @@ instance AsCreateProcError CreateProcError where
    (with the arguments). -}
 data ProcErrorX = PEX_FPATH_IO_ERROR   FPathIOError
                 | PEX_CREATEPROC_ERROR CreateProcError
-  deriving Show
+  deriving (Eq,Show)
 
 _PEX_FPATH_IO_ERROR ∷ Prism' ProcErrorX FPathIOError
 _PEX_FPATH_IO_ERROR = prism' (\ e → PEX_FPATH_IO_ERROR e)
@@ -125,7 +125,7 @@ instance Printable ProcErrorX where
 {- | Process error at kickoff or unexpected exit. -}
 data ProcError = PE_PEX_ERROR        ProcErrorX
                | PE_PROC_EXIT_ERROR  ProcExitError
-  deriving Show
+  deriving (Eq,Show)
 
 _PE_PEX_ERROR ∷ Prism' ProcError ProcErrorX
 _PE_PEX_ERROR = prism' (\ e → PE_PEX_ERROR e)

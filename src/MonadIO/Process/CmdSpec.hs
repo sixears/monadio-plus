@@ -245,12 +245,12 @@ mkCmd exe args = CmdSpec { _cmdExe      = CmdExe exe
      a process group. -}
 mkCmd' ∷ AbsFile → [𝕋] → CmdSpec
 mkCmd' exe args = CmdSpec { _cmdExe      = CmdExe exe
-                         , _cmdArgs     = CmdArgs args
-                         , _cwd         = 𝕵 root
-                         , _env         = 𝕵 $ fromList []
-                         , _createGroup = CreateGroup
-                         , _cmdName     = 𝕹
-                         , _expExit     = ExpExit (singleton 0, empty)
-                         }
+                          , _cmdArgs     = CmdArgs args
+                          , _cwd         = 𝕵 root
+                          , _env         = 𝕵 $ fromList []
+                          , _createGroup = CreateGroup
+                          , _cmdName     = 𝕹
+                          , _expExit     = ExpExit (singleton 0, empty)
+                          }
 
 -- that's all, folks! ----------------------------------------------------------

@@ -1,3 +1,7 @@
+1.4.11.0 2021-06-26
+===================
+- Add Eq instances to ProcExitError{,X}
+
 1.4.10.0 2021-06-26
 ===================
 - Add ProcExitError

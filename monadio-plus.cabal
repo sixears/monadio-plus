@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.10.0
+version:             1.4.11.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -100,7 +100,7 @@ library
                      , exceptions, filepath, lens, mtl, process, safe, tasty
                      , tasty-hunit, temporary, text, text-printer, unix
 
-                     , containers-plus >= 0.0.2.0
+                     , containers-plus >= 0.0.4.0
                      , env-plus        >= 1.0.1.0
                      , exited          >= 1.0.4.0
                      , fpath           >= 1.1.4.2
