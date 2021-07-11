@@ -14,12 +14,17 @@ import Data.Bool      ( Bool( False, True ), not )
 import Data.Eq        ( Eq )
 import Data.Function  ( ($), id )
 import Data.Word      ( Word8 )
+import GHC.Generics   ( Generic )
 import System.Exit    ( ExitCode( ExitFailure, ExitSuccess ) )
 import Text.Show      ( Show )
 
 -- data-textual ------------------------
 
 import Data.Textual  ( Printable( print ) )
+
+-- deepseq -----------------------------
+
+import Control.DeepSeq  ( NFData )
 
 -- exited ------------------------------
 
@@ -57,7 +62,7 @@ import MonadIO.Process.Signal  ( Signal )
 {- | Process exit status;  -}
 
 data ExitStatus = ExitVal Word8 | ExitSig Signal
-  deriving (Eq, Show)
+  deriving (Eq,Generic,NFData,Show)
 
 instance ToExitCode ExitStatus where
   toExitCode (ExitVal e) = case e of

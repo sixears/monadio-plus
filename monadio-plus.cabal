@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.11.0
+version:             1.4.12.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -73,11 +73,12 @@ library
                      , MonadIO.Process.CreateProc
                      , MonadIO.T.ReadlinkTestCases
 
-  default-extensions: ExistentialQuantification
+  default-extensions: DeriveAnyClass
+                    , DeriveGeneric
+                    , ExistentialQuantification
                     , FlexibleContexts
                     , FlexibleInstances
                     , FunctionalDependencies
-                    , GeneralizedNewtypeDeriving
                     , LambdaCase
                     , InstanceSigs
                     , MultiParamTypeClasses
@@ -96,7 +97,7 @@ library
 
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, bytestring, containers
-                     , data-textual, directory
+                     , data-textual, deepseq, directory
                      , exceptions, filepath, lens, mtl, process, safe, tasty
                      , tasty-hunit, temporary, text, text-printer, unix
 

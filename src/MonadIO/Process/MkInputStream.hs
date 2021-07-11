@@ -75,4 +75,7 @@ instance MkInputStream ℍ where
 instance {-# OVERLAPPABLE #-} FileAs γ ⇒ MkInputStream γ where
   mkIStream fn = UseHandle ⊳ openFile NoEncoding FileR fn
 
+-- !!! If adding new instances here, consider adding them to !!!
+-- !!! MockIO.Process.MLMakeIStream in mockio-plus too       !!!
+
 -- that's all, folks! ----------------------------------------------------------

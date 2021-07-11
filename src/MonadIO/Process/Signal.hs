@@ -11,6 +11,7 @@ import Data.Function  ( ($) )
 import Data.Maybe     ( Maybe( Just, Nothing ) )
 import Data.Ord       ( Ord )
 import Data.Word      ( Word8 )
+import GHC.Generics   ( Generic )
 import Prelude        ( fromIntegral )
 import Text.Show      ( Show )
 
@@ -21,6 +22,10 @@ import qualified  Data.Map  as  Map
 -- data-textual ------------------------
 
 import Data.Textual  ( Printable( print ) )
+
+-- deepseq -----------------------------
+
+import Control.DeepSeq  ( NFData )
 
 -- fmt ---------------------------------
 
@@ -41,7 +46,7 @@ import qualified  System.Posix.Signals  as  Sig
 -------------------------------------------------------------------------------
 
 newtype Signal = Signal Word8
-  deriving (Eq, Ord, Show)
+  deriving (Eq,Generic,NFData,Ord,Show)
 
 sigMap ∷ Map.Map Sig.Signal Text
 sigMap = Map.fromList [ ( Sig.nullSignal            , "NULL" ) -- "0"

@@ -1,3 +1,7 @@
+1.4.12.0 2021-06-11
+===================
+- Add NFData instances to Signal,ExitStatus
+
 1.4.11.0 2021-06-26
 ===================
 - Add Eq instances to ProcExitError{,X}
