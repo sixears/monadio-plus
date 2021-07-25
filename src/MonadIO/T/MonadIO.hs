@@ -28,15 +28,18 @@ import TastyPlus  ( runTestsP, runTestsReplay, runTestTree )
 ------------------------------------------------------------
 
 import qualified MonadIO.File
-import qualified MonadIO.FPath 
+import qualified MonadIO.FPath
 import qualified MonadIO.FStat
 import qualified MonadIO.OpenFile
+import qualified MonadIO.T.Process
 
 --------------------------------------------------------------------------------
 
 tests ∷ TestTree
 tests = testGroup "MonadIO" [ MonadIO.FStat.tests, MonadIO.FPath.tests
-                            , MonadIO.File.tests, MonadIO.OpenFile.tests ]
+                            , MonadIO.File.tests, MonadIO.OpenFile.tests
+                            , MonadIO.T.Process.tests
+                            ]
 
 ----------------------------------------
 

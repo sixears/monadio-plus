@@ -1,18 +1,27 @@
 module MonadIO.Error.ProcExitError
   ( AsProcExitError( _ProcExitError ), ProcExitError
-  , asProcExitError, procExitError )
+  , asProcExitError, procExitError, stdErr, stdOut )
 where
 
 -- base --------------------------------
 
 import Data.Eq        ( Eq( (==) ) )
 import Data.Function  ( ($), id )
+import GHC.Generics   ( Generic )
 import GHC.Stack      ( CallStack, HasCallStack, callStack )
 import Text.Show      ( Show )
+
+-- base-unicode-symbols ----------------
+
+import Data.Function.Unicode  ( ( ∘ ) )
 
 -- data-textual ------------------------
 
 import Data.Textual  ( Printable( print ) )
+
+-- deepseq -----------------------------
+
+import Control.DeepSeq  ( NFData )
 
 -- has-callstack -----------------------
 
@@ -20,7 +29,7 @@ import HasCallstack  ( HasCallstack( callstack ) )
 
 -- lens --------------------------------
 
-import Control.Lens.Lens    ( lens )
+import Control.Lens.Lens    ( Lens', lens )
 import Control.Lens.Prism   ( Prism' )
 import Control.Lens.Review  ( (#) )
 
@@ -41,8 +50,11 @@ import Text.Fmt  ( fmt )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Process.CmdSpec     ( CmdSpec )
-import MonadIO.Process.ExitStatus  ( ExitStatus )
+import MonadIO.Process.CmdSpec     ( CmdSpec, HasCmdArgs( cmdArgs )
+                                   , HasCmdExe( cmdExe )
+                                   , HasCmdSpec( cmdSpec )
+                                   )
+import MonadIO.Process.ExitStatus  ( ExitStatus, HasExitStatus( exitVal ) )
 
 --------------------------------------------------------------------------------
 
@@ -53,7 +65,7 @@ data ProcExitError = ProcExitError { _cmdspec   ∷ CmdSpec
                                    , _stderr    ∷ 𝕄 𝕋
                                    , _callstack ∷ CallStack
                                    }
-  deriving Show
+  deriving (Generic,NFData,Show)
 
 instance Eq ProcExitError where
   ProcExitError cp1 es1 so1 se1 _ == ProcExitError cp2 es2 so2 se2 _ =
@@ -78,10 +90,42 @@ instance Printable ProcExitError where
     P.text $ [fmt|PROCESS FAILED: CMD> %T\nEXIT: %T|]
              cs es
 
+--------------------
+
+instance HasExitStatus ProcExitError where
+  exitVal = lens _exStat (\ pe es → pe { _exStat = es })
+
+--------------------
+
+instance HasCmdArgs ProcExitError where
+  cmdArgs = cmdSpec ∘ cmdArgs
+
+--------------------
+
+instance HasCmdExe ProcExitError where
+  cmdExe = cmdSpec ∘ cmdExe
+
+--------------------
+
+instance HasCmdSpec ProcExitError where
+  cmdSpec = lens _cmdspec (\ pe cs → pe { _cmdspec = cs })
+
+----------------------------------------
+
 procExitError ∷ HasCallStack ⇒
                 CmdSpec → ExitStatus → (𝕄 𝕋, 𝕄 𝕋) → ProcExitError
 procExitError cspec exit (stdo,stde) =
   ProcExitError cspec exit stdo stde callStack
+
+----------------------------------------
+
+stdErr ∷ Lens' ProcExitError (𝕄 𝕋)
+stdErr = lens _stderr (\ pe t → pe { _stderr = t })
+
+----------------------------------------
+
+stdOut ∷ Lens' ProcExitError (𝕄 𝕋)
+stdOut = lens _stdout (\ pe t → pe { _stdout = t })
 
 ------------------------------------------------------------
 

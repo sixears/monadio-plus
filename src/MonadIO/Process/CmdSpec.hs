@@ -12,6 +12,7 @@ import Data.Eq         ( Eq )
 import Data.Function   ( ($), (&), id )
 import Data.Maybe      ( catMaybes, maybe )
 import Data.Word       ( Word8 )
+import GHC.Generics    ( Generic )
 import Text.Show       ( Show )
 
 -- base-unicode-symbols ----------------
@@ -31,6 +32,10 @@ import ContainersPlus.Member  ( HasMember( MemberType, (∈), member ) )
 -- data-textual ------------------------
 
 import Data.Textual  ( Printable( print ), toText )
+
+-- deepseq -----------------------------
+
+import Control.DeepSeq  ( NFData )
 
 -- env-plus ----------------------------
 
@@ -58,11 +63,12 @@ import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- process -----------------------------
 
-import System.Process  ( showCommandForUser )
+import System.Process            ( showCommandForUser )
+import System.Process.Internals  ( translate )
 
 -- text --------------------------------
 
-import Data.Text  ( intercalate, pack, unpack )
+import Data.Text  ( intercalate, pack, unpack, unwords )
 
 -- text-printer ------------------------
 
@@ -86,7 +92,7 @@ class HasExpExitSig  α where
 -- ExpExit -----------------------------
 
 newtype ExpExit = ExpExit (Set Word8, Set Signal)
-  deriving (Eq, Show)
+  deriving (Eq,Generic,NFData,Show)
 
 instance HasExpExitVal ExpExit where
   expExitVal = lens (\ (ExpExit (es,_)) → es)
@@ -106,13 +112,16 @@ instance HasMember ExpExit where
 
 {- | The path to the executable. -}
 newtype CmdExe = CmdExe AbsFile
-  deriving (Eq,Show)
+  deriving (Eq,Generic,NFData,Show)
 
 class HasCmdExe α where
   cmdExe ∷ Lens' α CmdExe
 
 instance HasCmdExe CmdExe where
   cmdExe = id
+
+instance Printable CmdExe where
+  print (CmdExe af) = print af
 
 instance AsFilePath CmdExe where
   filepath = prism (\ (CmdExe f) → f ⫥ filepath)
@@ -121,7 +130,7 @@ instance AsFilePath CmdExe where
 -- CmdArgs -------------------------------------------------
 
 newtype CmdArgs = CmdArgs { unCmdArgs ∷ [𝕋] }
-  deriving (Eq,Show)
+  deriving (Eq,Generic,NFData,Show)
 
 class HasCmdArgs α where
   cmdArgs  ∷ Lens' α CmdArgs
@@ -135,10 +144,13 @@ class HasCmdArgs α where
 instance HasCmdArgs CmdArgs where
   cmdArgs = id
 
+instance Printable CmdArgs where
+  print (CmdArgs as) = P.text ∘ unwords $ (pack ∘ translate ∘ unpack) ⊳ as
+
 -- CreateGroup ---------------------------------------------
 
 data CreateGroup = CreateGroup | NoCreateGroup
-  deriving (Eq, Show)
+  deriving (Eq,Generic,NFData,Show)
 
 -- CmdSpec -------------------------------------------------
 
@@ -155,7 +167,7 @@ data CmdSpec = CmdSpec { _cmdExe      ∷ CmdExe
                        --   to be raised.
                        , _expExit     ∷ ExpExit
                        }
-  deriving (Eq,Show)
+  deriving (Eq,Generic,NFData,Show)
 
 --------------------
 

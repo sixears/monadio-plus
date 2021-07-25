@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.12.0
+version:             1.4.13.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -70,7 +70,9 @@ library
 
   -- modules included in this library but not exported.
   other-modules:       MonadIO.Base
+                     , MonadIO.Paths
                      , MonadIO.Process.CreateProc
+                     , MonadIO.T.Process
                      , MonadIO.T.ReadlinkTestCases
 
   default-extensions: DeriveAnyClass
@@ -88,6 +90,7 @@ library
                     , QuasiQuotes
                     , RankNTypes
                     , ScopedTypeVariables
+                    , TypeApplications
                     , TypeFamilies
                     , UnicodeSyntax
                     , ViewPatterns
@@ -98,18 +101,19 @@ library
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, bytestring, containers
                      , data-textual, deepseq, directory
-                     , exceptions, filepath, lens, mtl, process, safe, tasty
-                     , tasty-hunit, temporary, text, text-printer, unix
+                     , exceptions, filepath, lens, mtl, prettyprinter, process
+                     , safe, tasty, tasty-hunit, temporary, text, text-printer
+                     , unix
 
                      , containers-plus >= 0.0.4.0
-                     , env-plus        >= 1.0.1.0
+                     , env-plus        >= 1.0.2.0
                      , exited          >= 1.0.4.0
-                     , fpath           >= 1.1.4.2
+                     , fpath           >= 1.1.5.0
                      , fstat           >= 1.0.1.0
                      , has-callstack   >= 1.0.1.0
-                     , monaderror-io   >= 1.1.0.1
+                     , monaderror-io   >= 1.1.1.0
                      , more-unicode    >= 0.0.15.0
-                     , tasty-plus      >= 1.5.0.1
+                     , tasty-plus      >= 1.5.0.2
                      , tfmt            >= 0.2.4.0
 
   -- Directories containing source files.

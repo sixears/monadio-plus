@@ -142,7 +142,7 @@ getCwdTests =
   let getCwd_ ∷ IO (Either FPathIOError AbsDir)
       getCwd_ = ѥ getCwd
 
-      inTmp = inSystemTempDirectory "FPath.IO.getCwdTests"
+      inTmp = inSystemTempDirectory "MonadIO.FPath.getCwdTests"
    in testCase "getCwd" $ inTmp $ \ d → getCwd_ ≫ \ cwd → Right d @=? cwd
 
 ----------------------------------------
@@ -382,7 +382,7 @@ instance PResolvable AbsFile where
 
 pResolveAbsFileTests ∷ TestTree
 pResolveAbsFileTests =
-  let tName   = "FPath.IO.pResolveTests.AbsFile"
+  let tName   = "MonadIO.FPath.pResolveTests.AbsFile"
       inTmp   = inSystemTempDirectory tName
       withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
       withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
@@ -436,7 +436,7 @@ instance PResolvable Abs where
 
 pResolveAbsTests ∷ TestTree
 pResolveAbsTests =
-  let tName   = "FPath.IO.pResolveTests.Abs"
+  let tName   = "MonadIO.FPath.pResolveTests.Abs"
       withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
       withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
 

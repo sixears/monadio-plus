@@ -8,6 +8,7 @@ import Control.Exception  ( Exception )
 import Data.Eq            ( Eq )
 import Data.Function      ( (.), ($), (&), id )
 import Data.Maybe         ( Maybe( Just ) )
+import GHC.Generics       ( Generic )
 import Text.Show          ( Show( show ) )
 
 -- base-unicode-symbols ----------------
@@ -17,6 +18,10 @@ import Data.Function.Unicode  ( (∘) )
 -- data-textual ------------------------
 
 import Data.Textual  ( Printable( print ) )
+
+-- deepseq -----------------------------
+
+import Control.DeepSeq  ( NFData )
 
 -- fpath -------------------------------
 
@@ -50,7 +55,7 @@ import MonadIO.Error.ProcExitError  ( AsProcExitError( _ProcExitError )
 --------------------------------------------------------------------------------
 
 newtype CreateProcError = CreateProcError { unIOErr ∷ IOError }
-  deriving Eq
+  deriving (Eq,Generic,NFData)
 
 instance Exception CreateProcError
 
@@ -84,7 +89,7 @@ instance AsCreateProcError CreateProcError where
    (with the arguments). -}
 data ProcErrorX = PEX_FPATH_IO_ERROR   FPathIOError
                 | PEX_CREATEPROC_ERROR CreateProcError
-  deriving (Eq,Show)
+  deriving (Eq,Generic,NFData,Show)
 
 _PEX_FPATH_IO_ERROR ∷ Prism' ProcErrorX FPathIOError
 _PEX_FPATH_IO_ERROR = prism' (\ e → PEX_FPATH_IO_ERROR e)
@@ -125,7 +130,7 @@ instance Printable ProcErrorX where
 {- | Process error at kickoff or unexpected exit. -}
 data ProcError = PE_PEX_ERROR        ProcErrorX
                | PE_PROC_EXIT_ERROR  ProcExitError
-  deriving (Eq,Show)
+  deriving (Eq,Generic,NFData,Show)
 
 _PE_PEX_ERROR ∷ Prism' ProcError ProcErrorX
 _PE_PEX_ERROR = prism' (\ e → PE_PEX_ERROR e)

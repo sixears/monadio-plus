@@ -1,3 +1,11 @@
+1.4.13.0 2021-07-22
+===================
+
+- Add NFData instances of CmdExe,CreateProcError,ProcExitError
+- Add Printable instances of CmdArgs,CmdExe
+- Add HasCmd* instances of ProcExitError
+- Add tests for Process.system
+
 1.4.12.0 2021-06-11
 ===================
 - Add NFData instances to Signal,ExitStatus
