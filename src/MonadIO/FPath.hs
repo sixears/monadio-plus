@@ -73,7 +73,7 @@ import FPath.Error.FPathError  ( AsFPathError, FPathIOError, _FPathEmptyE
                                , __FPathEmptyE__, __FPathNotAFileE__ )
 import FPath.Parseable         ( parse )
 import FPath.RelDir            ( RelDir, reldir )
-import FPath.RelFile           ( relfile )
+import FPath.RelFile           ( RelFile, relfile )
 
 -- lens --------------------------------
 
@@ -371,14 +371,13 @@ instance PResolvable AbsFile where
       (Empty, _    ) → -- f had a trailing /
                        __FPathNotAFileE__ absfileT (toText f)
 
-
       (_, Empty    ) → -- just a file, no dir part
-                       do c ∷ AbsDir ← pResolveDir d ("."∷Text)
-                          (c ⫻) ⊳ parse f
+                       do c ← pResolveDir @AbsDir d ("."∷Text)
+                          (c ⫻) ⊳ parse @RelFile f
 
       (x    , y    ) → -- dir + file
-                       do c ← pResolveDir d (toList y)
-                          (c ⫻) ⊳ parse (toList x)
+                       do c ← pResolveDir @AbsDir d (toList y)
+                          (c ⫻) ⊳ parse @RelFile (toList x)
 
 pResolveAbsFileTests ∷ TestTree
 pResolveAbsFileTests =

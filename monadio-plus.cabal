@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.13.0
+version:             1.4.13.1
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -108,12 +108,12 @@ library
                      , containers-plus >= 0.0.4.0
                      , env-plus        >= 1.0.2.0
                      , exited          >= 1.0.4.0
-                     , fpath           >= 1.1.5.0
+                     , fpath           >= 1.2.0.0
                      , fstat           >= 1.0.1.0
                      , has-callstack   >= 1.0.1.0
-                     , monaderror-io   >= 1.1.1.0
+                     , monaderror-io   >= 1.1.2.0
                      , more-unicode    >= 0.0.15.0
-                     , tasty-plus      >= 1.5.0.2
+                     , tasty-plus      >= 1.5.1.0
                      , tfmt            >= 0.2.4.0
 
   -- Directories containing source files.
