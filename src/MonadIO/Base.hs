@@ -3,11 +3,12 @@
 {-# LANGUAGE ViewPatterns  #-}
 
 module MonadIO.Base
-  ( chmod, hClose, unlink )
+  ( chmod, getArgs, hClose, unlink )
 where
 
 -- base --------------------------------
 
+import qualified System.Environment
 import qualified System.IO
 
 import Control.Monad.IO.Class  ( MonadIO )
@@ -36,7 +37,8 @@ import MonadError.IO.Error  ( AsIOError )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Lens  ( (⫥) )
+import Data.MoreUnicode.Lens    ( (⫥) )
+import Data.MoreUnicode.String  ( 𝕊 )
 
 -- mtl ---------------------------------
 
@@ -45,6 +47,12 @@ import Control.Monad.Except  ( MonadError )
 -- unix --------------------------------
 
 import System.Posix.Files  ( removeLink, setFileMode )
+
+------------------------------------------------------------
+--                     local imports                      --
+------------------------------------------------------------
+
+import MonadIO  ( liftIO )
 
 --------------------------------------------------------------------------------
 
@@ -65,5 +73,10 @@ unlink ∷ ∀ ε γ μ .
          (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, FileAs γ) ⇒
          γ → μ ()
 unlink (review _File_ → fn) = asIOError $ removeLink (fn ⫥ filepath)
+
+----------------------------------------
+
+getArgs ∷ MonadIO μ ⇒ μ [𝕊]
+getArgs = liftIO System.Environment.getArgs
 
 -- that's all, folks! ----------------------------------------------------------
