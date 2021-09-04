@@ -4,7 +4,6 @@ where
 
 -- base --------------------------------
 
-import Data.Either    ( Either )
 import Data.Eq        ( Eq )
 import Data.Function  ( ($), (&) )
 import Data.Maybe     ( isJust )
@@ -124,7 +123,7 @@ grepaf pat fn = devnull ≫ grep_ [pat, toText fn] -- [absfile|/dev/null|]
 {- | grep a pattern from some `Text`; capture the logs (for debugging). -}
 _grep_ ∷ (MonadIO μ, MkInputStream σ) ⇒
         𝕋 → σ → μ (𝔼 ProcError (ExitStatus, (𝕋,𝕋)))
-_grep_ pat input = ѥ @_ @(Either _) $ grep pat input
+_grep_ pat input = ѥ $ grep pat input
 
 {- | grep a pattern from some `Text`; write the logs to stderr (for
      debugging). -}

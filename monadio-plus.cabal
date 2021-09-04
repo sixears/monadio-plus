@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.14.0
+version:             1.4.14.1
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -47,6 +47,7 @@ library
   ghc-options:         -W -Wall -fhelpful-errors
   -- Modules exported by the library.
   exposed-modules:     MonadIO
+                     , MonadIO.Base
                      , MonadIO.Directory
                      , MonadIO.Error.CreateProcError
                      , MonadIO.Error.ProcExitError
@@ -69,8 +70,7 @@ library
                      , MonadIO.T.MonadIO
 
   -- modules included in this library but not exported.
-  other-modules:       MonadIO.Base
-                     , MonadIO.Paths
+  other-modules:       MonadIO.Paths
                      , MonadIO.Process.CreateProc
                      , MonadIO.T.Process
                      , MonadIO.T.ReadlinkTestCases
@@ -111,7 +111,7 @@ library
                      , fpath           >= 1.2.0.0
                      , fstat           >= 1.0.1.0
                      , has-callstack   >= 1.0.1.0
-                     , monaderror-io   >= 1.1.2.0
+                     , monaderror-io   == 1.2.0.0
                      , more-unicode    >= 0.0.15.0
                      , tasty-plus      >= 1.5.1.0
                      , tfmt            >= 0.2.4.0

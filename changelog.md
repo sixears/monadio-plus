@@ -1,3 +1,7 @@
+1.4.14.1 2021-09-04
+===================
+- fixup T.Process for updated MonadError free type ordering
+
 1.4.14.0 2021-08-27
 ===================
 - add Base.getArgs
