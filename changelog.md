@@ -1,3 +1,7 @@
+2.0.0.0 2021-10-14
+==================
+- Introduce NamedHandle & Flock
+
 1.4.14.1 2021-09-04
 ===================
 - fixup T.Process for updated MonadError free type ordering

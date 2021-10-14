@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.4.14.1
+version:             2.0.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -52,15 +52,15 @@ library
                      , MonadIO.Error.CreateProcError
                      , MonadIO.Error.ProcExitError
                      , MonadIO.File
+                     , MonadIO.Flock
                      , MonadIO.FPath
                      , MonadIO.FStat
-                     , MonadIO.Handle
+                     , MonadIO.NamedHandle
                      , MonadIO.OpenFile
                      , MonadIO.Process
                      , MonadIO.Process.CmdSpec
                      , MonadIO.Process.ExitStatus
                      , MonadIO.Process.MakeProc
-                     , MonadIO.Process.MkStream
                      , MonadIO.Process.MkInputStream
                      , MonadIO.Process.OutputHandles
                      , MonadIO.Process.Signal
@@ -100,10 +100,9 @@ library
 
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, bytestring, containers
-                     , data-textual, deepseq, directory
-                     , exceptions, filepath, lens, mtl, prettyprinter, process
-                     , safe, tasty, tasty-hunit, temporary, text, text-printer
-                     , unix
+                     , data-textual, deepseq, directory, exceptions, filelock
+                     , filepath, lens, mtl, prettyprinter, process, safe, tasty
+                     , tasty-hunit, temporary, text, text-printer, unix
 
                      , containers-plus >= 0.0.4.0
                      , env-plus        >= 1.0.2.0
@@ -112,7 +111,7 @@ library
                      , fstat           >= 1.0.1.0
                      , has-callstack   >= 1.0.1.0
                      , monaderror-io   == 1.2.0.0
-                     , more-unicode    >= 0.0.15.0
+                     , more-unicode    >= 0.0.16.0
                      , tasty-plus      >= 1.5.1.0
                      , tfmt            >= 0.2.4.0
 

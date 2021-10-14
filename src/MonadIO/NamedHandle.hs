@@ -1,8 +1,10 @@
-module MonadIO.Handle
-  ( HEncoding(..), HGetContents( hGetContents )
+module MonadIO.NamedHandle
+  ( HasNamedHandle( handle, hname, hiomode ), HEncoding(..)
+  , HGetContents( hGetContents )
   , HWriteContents( hWriteContents )
   , ImpliedEncoding( impliedEncoding, impliedEncodingM )
-  , hSetEncoding
+  , NamedHandle, ℍ, pattern ℍ
+  , hClose, hSetEncoding
   )
 where
 
@@ -13,9 +15,13 @@ import qualified  System.IO
 import Control.Monad           ( return )
 import Control.Monad.Identity  ( Identity( Identity ) )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Function           ( ($) )
-import System.IO               ( Handle, char8, hSetNewlineMode
+import Data.Function           ( ($), id )
+import System.IO               ( Handle, IOMode, NewlineMode, char8
                                , nativeNewlineMode, noNewlineTranslation, utf8 )
+
+-- base-unicode-symbols ----------------
+
+import Data.Function.Unicode  ( (∘) )
 
 -- bytestring --------------------------
 
@@ -23,9 +29,15 @@ import qualified Data.ByteString  as  BS
 
 import Data.ByteString  ( ByteString )
 
+-- lens --------------------------------
+
+import Control.Lens.Getter  ( view )
+import Control.Lens.Lens    ( Lens', lens )
+
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Functor  ( (⩺) )
+import Data.MoreUnicode.Lens     ( (⊣) )
 import Data.MoreUnicode.Monad    ( (⪼) )
 import Data.MoreUnicode.Text     ( 𝕋 )
 
@@ -37,12 +49,45 @@ import Data.Text  ( lines )
 
 --------------------------------------------------------------------------------
 
-type ℍ  = Handle
+data NamedHandle = NamedHandle { _handle  ∷ Handle
+                               , _hname   ∷ 𝕋
+                               , _hiomode ∷ IOMode
+                               }
+
+type ℍ = NamedHandle
+pattern ℍ ∷ Handle → 𝕋 → IOMode → ℍ
+pattern ℍ h n i ← NamedHandle h n i
+  where ℍ h n i = NamedHandle h n i
+
+class HasNamedHandle α where
+  hname   ∷ Lens' α 𝕋
+  handle  ∷ Lens' α Handle
+  hiomode ∷ Lens' α IOMode
+
+instance HasNamedHandle ℍ where
+  hname   = lens _hname   (\ h n → h { _hname   = n })
+  handle  = lens _handle  (\ h l → h { _handle  = l })
+  hiomode = lens _hiomode (\ h i → h { _hiomode = i })
+
+----------------------------------------
+
 type 𝔹𝕊 = ByteString
 
 data HEncoding = UTF8 | Binary | NoEncoding
 
-hSetEncoding ∷ MonadIO μ ⇒ ℍ → HEncoding → μ ()
+----------------------------------------
+
+hClose ∷ MonadIO μ ⇒ ℍ → μ ()
+hClose = liftIO ∘ System.IO.hClose ∘ view handle
+
+------------------------------------------------------------
+
+hSetNewlineMode ∷ MonadIO μ ⇒ Handle → NewlineMode → μ ()
+hSetNewlineMode h = liftIO ∘ System.IO.hSetNewlineMode h
+
+----------------------------------------
+
+hSetEncoding ∷ MonadIO μ ⇒ Handle → HEncoding → μ ()
 hSetEncoding h UTF8 = liftIO $ do
   System.IO.hSetEncoding h utf8
   hSetNewlineMode        h nativeNewlineMode
@@ -73,17 +118,28 @@ instance ImpliedEncoding () where
 
 ------------------------------------------------------------
 
+class ToHandle α where
+  toHandle ∷ α → Handle
+
+instance ToHandle Handle where
+  toHandle = id
+
+instance ToHandle ℍ where
+  toHandle = view handle
+
 class ImpliedEncoding α ⇒ HGetContents α where
-  hGetContents ∷ MonadIO μ ⇒ ℍ → μ α
+  hGetContents ∷ (MonadIO μ, ToHandle δ) ⇒ δ → μ α
 
 instance HGetContents 𝕋 where
-  hGetContents h = liftIO $ hSetEncoding h UTF8 ⪼ TextIO.hGetContents h
+  hGetContents h =
+    liftIO $ hSetEncoding (toHandle h) UTF8 ⪼ TextIO.hGetContents (toHandle h)
 
 instance HGetContents [𝕋] where
   hGetContents = lines ⩺ hGetContents
 
 instance HGetContents 𝔹𝕊 where
-  hGetContents h = liftIO $ hSetEncoding h Binary ⪼ BS.hGetContents h
+  hGetContents h =
+    liftIO $ hSetEncoding (toHandle h) Binary ⪼ BS.hGetContents (toHandle h)
 
 ------------------------------------------------------------
 
@@ -93,9 +149,11 @@ class ImpliedEncoding α ⇒ HWriteContents α where
   hWriteContents  ∷ MonadIO μ ⇒ ℍ → α → μ ()
 
 instance HWriteContents 𝕋 where
-  hWriteContents h t = liftIO $ hSetEncoding h UTF8 ⪼ TextIO.hPutStr h t
+  hWriteContents h t =
+    liftIO $ hSetEncoding (toHandle h) UTF8 ⪼ TextIO.hPutStr (h ⊣ handle) t
 
 instance HWriteContents 𝔹𝕊 where
-  hWriteContents h b = liftIO $ hSetEncoding h Binary ⪼ BS.hPutStr h b
+  hWriteContents h b =
+    liftIO $ hSetEncoding (toHandle h) Binary ⪼ BS.hPutStr (h ⊣ handle) b
 
 -- that's all, folks! ----------------------------------------------------------

@@ -1,7 +1,7 @@
 {- | POSIX process signals, with nice formatting -}
 
 module MonadIO.Process.Signal
-  ( Signal( Signal ) )
+  ( Signal( Signal ), allSigs, sigMap )
 where
 
 -- base --------------------------------
@@ -14,6 +14,10 @@ import Data.Word      ( Word8 )
 import GHC.Generics   ( Generic )
 import Prelude        ( fromIntegral )
 import Text.Show      ( Show )
+
+-- base-unicode-symbols ----------------
+
+import Data.Function.Unicode  ( (∘) )
 
 -- containers --------------------------
 
@@ -30,6 +34,10 @@ import Control.DeepSeq  ( NFData )
 -- fmt ---------------------------------
 
 import Text.Fmt  ( fmt )
+
+-- more-unicode ------------------------
+
+import Data.MoreUnicode.Functor  ( (⊳) )
 
 -- text --------------------------------
 
@@ -81,13 +89,16 @@ sigMap = Map.fromList [ ( Sig.nullSignal            , "NULL" ) -- "0"
                       , ( Sig.badSystemCall         , "SYS"  ) -- 31 on Linux
                       ]
 
-
-
 instance Printable Signal where
   print (Signal s) = let sigText s' =
                              case fromIntegral s' `Map.lookup` sigMap of
                                       Just t  → t
                                       Nothing → [fmt|#%d|] s
                         in P.text $ "sig" `append` sigText s
+
+----------------------------------------
+
+allSigs ∷ [Signal]
+allSigs = Signal ∘ fromIntegral ⊳ Map.keys sigMap
 
 -- that's all, folks! ---------------------------------------------------------

@@ -26,11 +26,10 @@ import Data.MoreUnicode.Text  ( 𝕋 )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Handle  ( HGetContents( hGetContents ) )
+import MonadIO.NamedHandle  ( HGetContents( hGetContents ) )
 
 --------------------------------------------------------------------------------
 
-type ℍ  = Handle
 type 𝔹𝕊 = ByteString
 
 class OutputHandles ζ ω | ω → ζ where
@@ -53,25 +52,25 @@ instance OutputHandles () () where
 --        |
 --     42 | instance HGetContents α ⇒ OutputHandles ℍ α where
 
-instance OutputHandles ℍ 𝕋 where
+instance OutputHandles Handle 𝕋 where
   -- | slurped output for stdout (but not stderr, which is untouched)
   slurp h0 = do
     t0 <- hGetContents h0
     return t0
 
-instance OutputHandles ℍ [𝕋] where
+instance OutputHandles Handle [𝕋] where
   -- | slurped output for stdout (but not stderr, which is untouched)
   slurp h0 = do
     t0 <- hGetContents h0
     return t0
 
-instance OutputHandles ℍ 𝔹𝕊 where
+instance OutputHandles Handle 𝔹𝕊 where
   -- | slurped output for stdout (but not stderr, which is untouched)
   slurp h0 = do
     t0 <- hGetContents h0
     return t0
 
-instance (HGetContents α, HGetContents β) ⇒ OutputHandles (ℍ,ℍ) (α,β) where
+instance (HGetContents α, HGetContents β) ⇒ OutputHandles (Handle,Handle) (α,β) where
   slurp (h0, h1) = do
     t0 <- hGetContents h0
     t1 <- hGetContents h1

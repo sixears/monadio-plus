@@ -12,6 +12,10 @@ import Data.Function           ( ($) )
 import GHC.Stack               ( HasCallStack )
 import System.IO               ( Handle )
 
+-- base-unicode-symbols ----------------
+
+import Data.Function.Unicode  ( (∘) )
+
 -- bytestring --------------------------
 
 import Data.ByteString  ( ByteString )
@@ -20,6 +24,10 @@ import Data.ByteString  ( ByteString )
 
 import FPath.Error.FPathError  ( AsFPathError )
 import FPath.File              ( FileAs )
+
+-- lens --------------------------------
+
+import Control.Lens.Getter  ( view )
 
 -- monaderror-io -----------------------
 
@@ -32,6 +40,7 @@ import MonadIO.Temp  ( tempfile )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Functor  ( (⊳) )
+import Data.MoreUnicode.Lens     ( (⊣) )
 import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- mtl ---------------------------------
@@ -46,13 +55,12 @@ import System.Process  ( StdStream( UseHandle ) )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Handle    ( HEncoding( NoEncoding ) )
-import MonadIO.OpenFile  ( FileOpenMode( FileR ), openFile )
+import MonadIO.NamedHandle  ( HEncoding( NoEncoding ), ℍ, handle )
+import MonadIO.OpenFile     ( FileOpenMode( FileR ), openFile )
 
 --------------------------------------------------------------------------------
 
 type 𝔹𝕊 = ByteString
-type ℍ  = Handle
 
 class MkInputStream α where
   mkIStream ∷ ∀ ε μ .
@@ -69,11 +77,14 @@ instance MkInputStream 𝕋 where
 instance MkInputStream 𝔹𝕊 where
   mkIStream b = UseHandle ⊳ tempfile b
 
-instance MkInputStream ℍ where
+instance MkInputStream Handle where
   mkIStream h = return $ UseHandle h
 
+instance MkInputStream ℍ where
+  mkIStream h = return $ UseHandle (h ⊣ handle)
+
 instance {-# OVERLAPPABLE #-} FileAs γ ⇒ MkInputStream γ where
-  mkIStream fn = UseHandle ⊳ openFile NoEncoding FileR fn
+  mkIStream fn = UseHandle ∘ view handle ⊳ openFile NoEncoding FileR fn
 
 -- !!! If adding new instances here, consider adding them to !!!
 -- !!! MockIO.Process.MLMakeIStream in mockio-plus too       !!!

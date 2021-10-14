@@ -84,6 +84,7 @@ import FStat  ( FStat, FileType( Directory, SymbolicLink ), ftype )
 
 -- lens --------------------------------
 
+import Control.Lens.Getter  ( view )
 import Control.Lens.Review  ( review )
 
 import qualified System.FilePath.Lens
@@ -148,13 +149,15 @@ import System.Posix.Files  ( readSymbolicLink )
 import MonadIO.FStat     as  FStat     hiding ( tests )
 import MonadIO.OpenFile  as  OpenFile  hiding ( tests )
 
-import MonadIO.Base      ( chmod, hClose, unlink )
-import MonadIO.FPath     ( pResolve, pResolveDir )
-import MonadIO.Tasty     ( TestFileSpec( TFSDir, TFSFile, TFSSymL )
-                         , testInTempDirFS )
+import MonadIO.Base         ( chmod, hClose, unlink )
+import MonadIO.FPath        ( pResolve, pResolveDir )
+import MonadIO.NamedHandle  ( ℍ, handle )
+import MonadIO.Tasty        ( TestFileSpec( TFSDir, TFSFile, TFSSymL )
+                            , testInTempDirFS )
 
-import MonadIO.T.ReadlinkTestCases  ( readExp, readlinkTestCases, resolveExp
-                                    , slName, slTarget )
+import MonadIO.T.ReadlinkTestCases
+                            ( readExp, readlinkTestCases, resolveExp, slName
+                            , slTarget )
 
 --------------------------------------------------------------------------------
 
@@ -307,13 +310,6 @@ fileWritableTests =
 
 ----------------------------------------
 
-{- | Work over a file, accumulating results, line-by-line. -}
-fileFoldLinesUTF8 ∷ ∀ ε γ α μ .
-                    (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ,
-                     HasCallStack) ⇒
-                    α → (α → 𝕋 → IO α) → γ → μ α
-fileFoldLinesUTF8 a io fn = withFile UTF8 FileR fn $ lift ∘ fileFoldLinesH a io
-
 fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
 fileFoldLinesH a io h = do
   eof ← liftIO $ hIsEOF h
@@ -323,10 +319,18 @@ fileFoldLinesH a io h = do
            a' ← io a l
            fileFoldLinesH a' io h
 
+{- | Work over a file, accumulating results, line-by-line. -}
+fileFoldLinesUTF8 ∷ ∀ ε γ α μ .
+                    (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ,
+                     HasCallStack) ⇒
+                    α → (α → 𝕋 → IO α) → γ → μ α
+fileFoldLinesUTF8 a io fn =
+  withFile UTF8 FileR fn $ lift ∘ fileFoldLinesH a io ∘ view handle
+
 ----------------------------------------
 
 {- | An open RW handle to /dev/null. -}
-devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ Handle
+devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ ℍ
 devnull = openFile Binary (FileRWNoTrunc 𝕹) [absfile|/dev/null|]
 
 ----------------------------------------

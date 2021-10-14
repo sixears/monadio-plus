@@ -2,7 +2,7 @@ module MonadIO.Process.CmdSpec
   ( CmdArgs( CmdArgs, unCmdArgs ), CmdExe(..), CmdSpec(..), CreateGroup(..)
   , HasCmdArgs(..), HasCmdExe(..), HasCmdSpec(..)
   , HasExpExitSig(..), HasExpExitVal(..)
-  , mkCmd, mkCmd'
+  , anyExit, mkCmd, mkCmd'
   )
 where
 
@@ -23,7 +23,7 @@ import Data.Monoid.Unicode    ( (⊕) )
 
 -- containers --------------------------
 
-import Data.Set  ( Set, empty, singleton )
+import Data.Set  as  Set
 
 -- containers-plus ---------------------
 
@@ -39,7 +39,8 @@ import Control.DeepSeq  ( NFData )
 
 -- env-plus ----------------------------
 
-import Env.Types  ( Env, fromList )
+import qualified  Env.Types  as  Env
+import Env.Types  ( Env )
 
 -- fpath -------------------------------
 
@@ -79,7 +80,7 @@ import qualified  Text.Printer  as  P
 ------------------------------------------------------------
 
 import MonadIO.Process.ExitStatus  ( ExitStatus( ExitVal, ExitSig ) )
-import MonadIO.Process.Signal      ( Signal )
+import MonadIO.Process.Signal      ( Signal, allSigs )
 
 --------------------------------------------------------------------------------
 
@@ -259,10 +260,17 @@ mkCmd' ∷ AbsFile → [𝕋] → CmdSpec
 mkCmd' exe args = CmdSpec { _cmdExe      = CmdExe exe
                           , _cmdArgs     = CmdArgs args
                           , _cwd         = 𝕵 root
-                          , _env         = 𝕵 $ fromList []
+                          , _env         = 𝕵 $ Env.fromList []
                           , _createGroup = CreateGroup
                           , _cmdName     = 𝕹
                           , _expExit     = ExpExit (singleton 0, empty)
                           }
+
+----------------------------------------
+
+{- | Modify a `CmdSpec` to expect any exit (both exit values & signals). -}
+anyExit ∷ CmdSpec → CmdSpec
+anyExit cspec = cspec & expExitVal ⊢ Set.fromAscList [0..255]
+                      & expExitSig ⊢ Set.fromList allSigs
 
 -- that's all, folks! ----------------------------------------------------------

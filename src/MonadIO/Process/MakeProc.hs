@@ -80,14 +80,12 @@ import MonadIO.Process.MkInputStream  ( MkInputStream( mkIStream ) )
 
 --------------------------------------------------------------------------------
 
-type ℍ = Handle
-
 -- MakeProc ------------------------------------------------
 
 {- | Create a process handle from a `CreateProc` specification. -}
 createProc_ ∷ (MonadIO μ, AsCreateProcError ε, MonadError ε μ, HasCallStack) ⇒
               CreateProc
-            → μ (𝕄 ℍ, 𝕄 ℍ, 𝕄 ℍ, ProcessHandle)
+            → μ (𝕄 Handle, 𝕄 Handle, 𝕄 Handle, ProcessHandle)
 createProc_ cp = do
   let exe = (cp ⊣ cmdExe ) ⫥ filepath
   p ← splitMError ∘ asIOError $
@@ -137,7 +135,7 @@ instance MakeProc () where
       (𝕹, 𝕹, 𝕹, h) → return (h, ())
       _                              → error "MakeProc: cannot happen (())"
 
-instance MakeProc ℍ where
+instance MakeProc Handle where
   makeProc stdIn c = do
     inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
@@ -149,7 +147,7 @@ instance MakeProc ℍ where
       (𝕹, 𝕵 outH, 𝕹, h) → return (h, outH)
       _                                → error "MakeProc: cannot happen (H)"
 
-instance MakeProc (ℍ,()) where
+instance MakeProc (Handle,()) where
   makeProc stdIn c = do
     inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
@@ -161,7 +159,7 @@ instance MakeProc (ℍ,()) where
       (𝕹, 𝕵 outH, 𝕹, h) → return (h, (outH,()))
       _                                → error "MakeProc: cannot happen (H,())"
 
-instance MakeProc ((),ℍ) where
+instance MakeProc ((),Handle) where
   makeProc stdIn c = do
     inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c
@@ -190,7 +188,7 @@ instance MakeProc ((),()) where
       (𝕹, 𝕹, 𝕹, h) → return (h, ((),()))
       _                              → error "MakeProc: cannot happen ((),())"
 
-instance MakeProc (ℍ,ℍ) where
+instance MakeProc (Handle,Handle) where
   makeProc stdIn c = do
     inH ← mkIStream stdIn
     cp  ← createProc_ CreateProc { _cmd_spec = c

@@ -1,5 +1,5 @@
 module MonadIO.Process
- ( system, systemx )
+ ( doProc, system, systemx )
 where
 
 import Prelude  ( (-), fromIntegral )
@@ -8,6 +8,7 @@ import Prelude  ( (-), fromIntegral )
 
 import Data.Bool               ( otherwise )
 import Data.Ord                ( (>) )
+import Data.Word               ( Word8 )
 import Control.Monad           ( join, return )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Function           ( ($) )
@@ -22,8 +23,13 @@ import Data.Function.Unicode  ( (∘) )
 
 import ContainersPlus.Member  ( HasMember( (∉) ) )
 
+-- data-textual ------------------------
+
+import Data.Textual  ( Printable )
+
 -- fpath -------------------------------
 
+import FPath.AbsFile           ( AbsFile )
 import FPath.Error.FPathError  ( AsFPathError )
 
 -- monaderror-io -----------------------
@@ -35,11 +41,13 @@ import MonadError.IO.Error  ( AsIOError )
 
 import Data.MoreUnicode.Either  ( pattern 𝕷, pattern 𝕽 )
 import Data.MoreUnicode.Lens    ( (⊣) )
+import Data.MoreUnicode.Maybe   ( pattern 𝕹 )
 import Data.MoreUnicode.Monad   ( (≫) )
+import Data.MoreUnicode.Text    ( 𝕋 )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( MonadError, throwError )
+import Control.Monad.Except  ( ExceptT, MonadError, throwError )
 
 -- process -----------------------------
 
@@ -51,7 +59,8 @@ import System.Process  ( ProcessHandle, waitForProcess )
 
 import MonadIO.Error.CreateProcError  ( AsCreateProcError )
 import MonadIO.Error.ProcExitError    ( AsProcExitError, asProcExitError )
-import MonadIO.Process.CmdSpec        ( CmdSpec, expExit )
+import MonadIO.Process.CmdSpec        ( CmdSpec
+                                      , anyExit, cmdSpec, expExit, mkCmd )
 import MonadIO.Process.ExitStatus     ( ExitStatus( ExitSig, ExitVal ) )
 import MonadIO.Process.MakeProc       ( MakeProc, makeProc )
 import MonadIO.Process.MkInputStream  ( MkInputStream )
@@ -126,5 +135,28 @@ system inh cspec = do
   then throwError $ asProcExitError cspec exit (toMaybeTexts w)
   else return (exit,w)
 
+----------------------------------------
+
+{- | Spawn a process; return the exit value, throw on signal.  The `finally`
+     argument is always executed immediately after the process returns (whatever
+     the exit value).
+ -}
+doProc ∷ ∀ ε ζ ω σ μ .
+         (MonadIO μ, MkInputStream σ,
+          ToMaybeTexts ω, MakeProc ζ, OutputHandles ζ ω,
+          AsProcExitError ε, AsCreateProcError ε, AsFPathError ε,
+          AsIOError ε, Printable ε, MonadError ε μ) ⇒
+         μ () → ExceptT ε μ σ → AbsFile → [𝕋] → μ (Word8, ω)
+doProc finally input exec as = do
+  let cmd = anyExit (mkCmd exec as)
+  result ← ѥ $ input ≫ \ l → system l cmd
+  finally
+  case result of
+    𝕷 e      → throwError e
+    𝕽 (ex,w) → do
+      case ex of
+        ExitVal x → return (x,w)
+        -- we throw if the subprocess sees any signal
+        ExitSig _ → throwError (asProcExitError (cmd ⊣ cmdSpec) ex (𝕹,𝕹))
 
 -- that's all, folks! ----------------------------------------------------------

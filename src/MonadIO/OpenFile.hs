@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE InstanceSigs      #-}
 {-# LANGUAGE LambdaCase        #-}
@@ -13,10 +14,13 @@
 
 module MonadIO.OpenFile
   ( FileOpenMode(..), HEncoding( Binary, NoEncoding, UTF8 )
+  , pattern ℍ
+
   , fileOpenMode
 
-  , appendFile, openFile, readFile, readFileUTF8Lenient, withFile, writeExFile
-  , writeFile, writeNoTruncFile
+  , appendFile, openFile
+  , readFile, readFileY, readFileUTF8Lenient, readFileUTF8LenientY
+  , withFile, writeExFile, writeFile, writeNoTruncFile
 
   , appendFlags, readFlags, readWriteExFlags, readWriteFlags
   , readWriteNoTruncFlags, writeExFlags, writeFlags, writeNoTruncFlags
@@ -27,25 +31,24 @@ where
 
 -- base --------------------------------
 
-import qualified  System.IO
-
-import Control.Monad           ( join, return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Either             ( Either )
-import Data.Function           ( ($), flip )
-import Data.String             ( String )
-import GHC.Stack               ( HasCallStack )
-import System.Exit             ( ExitCode )
-import System.IO               ( Handle, IO
-                               , IOMode( AppendMode, ReadMode, ReadWriteMode
-                                       , WriteMode )
-                               )
-import System.Posix.Types      ( FileMode )
+import Control.Monad       ( join, return )
+import Data.Either         ( Either )
+import Data.Function       ( ($), flip )
+import Data.String         ( String )
+import GHC.Stack           ( HasCallStack )
+import System.Exit         ( ExitCode )
+import System.IO           ( IO, IOMode( AppendMode, ReadMode, ReadWriteMode
+                                       , WriteMode ) )
+import System.Posix.Types  ( FileMode )
 
 -- base-unicode-symbols ----------------
 
 import Data.Function.Unicode  ( (∘) )
 import Data.Monoid.Unicode    ( (⊕) )
+
+-- data-textual ------------------------
+
+import Data.Textual  ( toText )
 
 -- exceptions --------------------------
 
@@ -65,7 +68,7 @@ import Control.Lens.Review  ( review )
 
 import MonadError           ( ѥ )
 import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError, IOError )
+import MonadError.IO.Error  ( AsIOError, IOError, squashNoSuchThingT )
 
 -- more-unicode ------------------------
 
@@ -112,13 +115,15 @@ import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Base    ( chmod, unlink )
-import MonadIO.Handle  ( HEncoding( Binary, NoEncoding, UTF8 )
-                       , HGetContents( hGetContents )
-                       , HWriteContents( hWriteContents )
-                       , ImpliedEncoding( impliedEncoding )
-                       , hSetEncoding, impliedEncodingM
-                       )
+import MonadIO              ( MonadIO, liftIO )
+import MonadIO.Base         ( chmod, unlink )
+import MonadIO.NamedHandle  ( HEncoding( Binary, NoEncoding, UTF8 )
+                            , HGetContents( hGetContents )
+                            , HWriteContents( hWriteContents )
+                            , ImpliedEncoding( impliedEncoding )
+                            , ℍ, pattern ℍ
+                            , hClose, hSetEncoding, impliedEncodingM
+                            )
 
 --------------------------------------------------------------------------------
 
@@ -216,6 +221,7 @@ appendFlags = OpenFileFlags { append = 𝕿, exclusive = 𝕱, noctty = 𝕱,
 
 ----------------------------------------
 
+{-
 openFile'' ∷ (MonadIO μ, FileAs γ) ⇒
              HEncoding → IOMode → OpenFileFlags → 𝕄 FileMode
            → γ → μ Handle
@@ -230,17 +236,39 @@ openFile'' enc mode flags perms (review _File_ → fn) = liftIO $ do
   h ← openFd (fn ⫥ filepath) (openMode mode) perms flags' ≫ fdToHandle
   hSetEncoding h enc
   return h
+-}
 
 openFile_ ∷ (MonadIO μ, FileAs γ) ⇒
-            HEncoding → FileOpenMode → γ → μ Handle
-openFile_ enc fomode = let (mode,flags,perms) = fileOpenMode fomode
-                        in openFile'' enc mode flags perms
+            HEncoding → FileOpenMode → γ → μ ℍ
+openFile_ enc fomode (review _File_ → fn) = do
+  let (mode,flags,perms) = fileOpenMode fomode
+      openMode ReadMode      = ReadOnly
+      openMode WriteMode     = WriteOnly
+      openMode ReadWriteMode = ReadWrite
+      openMode AppendMode    = WriteOnly
+      flags'   = case mode of
+                   AppendMode → flags { append = 𝕿 }
+                   _          → flags
+  h ← liftIO $ openFd (fn ⫥ filepath) (openMode mode) perms flags' ≫ fdToHandle
+  hSetEncoding h enc
+--  h ← openFile'' enc mode flags perms fn
+  return $ ℍ h (toText $ fn ⫥ filepath) mode
 
 ----------------------------------------
 
 openFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-           HEncoding → FileOpenMode → γ → μ Handle
+           HEncoding → FileOpenMode → γ → μ ℍ
 openFile enc fomode fn = asIOError $ openFile_ enc fomode fn
+
+----------------------------------------
+
+{- | Perform an IO action (that may throw a `MonadError`) in the context of an
+     open filehandle . -}
+withFile ∷ ∀ ε α γ μ .
+           (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+           HEncoding → FileOpenMode → γ → (ℍ → ExceptT ε IO α) → μ α
+withFile enc fomode fn io =
+  join $ asIOError $ bracket (openFile_ enc fomode fn) hClose (ѥ ∘ io)
 
 --------------------
 
@@ -252,15 +280,11 @@ readFile fn = let result = withFile enc FileR fn hGetContents
                   enc    = impliedEncodingM result
                in result
 
-----------------------------------------
-
-{- | Perform an IO action (that may throw a `MonadError`) in the context of an
-     open filehandle . -}
-withFile ∷ ∀ ε α γ μ .
-           (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
-           HEncoding → FileOpenMode → γ → (Handle → ExceptT ε IO α) → μ α
-withFile enc fomode fn io =
-  join $ asIOError $ bracket (openFile_ enc fomode fn) System.IO.hClose (ѥ ∘ io)
+readFileY ∷ ∀ ε τ γ μ .
+            (MonadIO μ, FileAs γ,
+             AsIOError ε, MonadError ε μ, HasCallStack, HGetContents τ) ⇒
+            γ -> μ (𝕄 τ)
+readFileY = squashNoSuchThingT ∘ readFile
 
 ----------------------------------------
 
@@ -377,6 +401,11 @@ readFileUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO �
                        FileAs γ) ⇒
                       γ → μ 𝕋
 readFileUTF8Lenient fn = decodeUtf8With lenientDecode ⊳ readFile fn
+
+readFileUTF8LenientY ∷ (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ,
+                        FileAs γ) ⇒
+                       γ → μ (𝕄 𝕋)
+readFileUTF8LenientY = squashNoSuchThingT ∘ readFileUTF8Lenient
 
 --------------------------------------------------------------------------------
 
