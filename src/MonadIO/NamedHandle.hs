@@ -3,8 +3,8 @@ module MonadIO.NamedHandle
   , HGetContents( hGetContents )
   , HWriteContents( hWriteContents )
   , ImpliedEncoding( impliedEncoding, impliedEncodingM )
-  , NamedHandle, ℍ, pattern ℍ
-  , hClose, hSetEncoding
+  , NamedHandle( NamedHandle ), ℍ, pattern ℍ
+  , hClose, hSetEncoding, stderr, stdin, stdout
   )
 where
 
@@ -16,8 +16,11 @@ import Control.Monad           ( return )
 import Control.Monad.Identity  ( Identity( Identity ) )
 import Control.Monad.IO.Class  ( MonadIO, liftIO )
 import Data.Function           ( ($), id )
-import System.IO               ( Handle, IOMode, NewlineMode, char8
-                               , nativeNewlineMode, noNewlineTranslation, utf8 )
+import System.IO               ( Handle, IOMode( ReadMode, WriteMode )
+                               , NewlineMode
+                               , char8, nativeNewlineMode, noNewlineTranslation
+                               , utf8
+                               )
 
 -- base-unicode-symbols ----------------
 
@@ -155,5 +158,16 @@ instance HWriteContents 𝕋 where
 instance HWriteContents 𝔹𝕊 where
   hWriteContents h b =
     liftIO $ hSetEncoding (toHandle h) Binary ⪼ BS.hPutStr (h ⊣ handle) b
+
+----------------------------------------
+
+stdin  ∷ ℍ
+stdin  = ℍ System.IO.stdin "<STDIN>" ReadMode
+
+stdout ∷ ℍ
+stdout = ℍ System.IO.stdout "<STDOUT>" WriteMode
+
+stderr ∷ ℍ
+stderr = ℍ System.IO.stderr "<STDERR>" WriteMode
 
 -- that's all, folks! ----------------------------------------------------------

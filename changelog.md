@@ -1,3 +1,9 @@
+2.0.1.0 2021-10-16
+==================
+- doProc takes a simple input
+- add `systemN`, `systemS`
+- add `stdin`, `stdout`, `stderr` to NamedHandle
+
 2.0.0.0 2021-10-14
 ==================
 - Introduce NamedHandle & Flock
