@@ -1,3 +1,7 @@
+2.0.2.1 2021-10-17
+==================
+- fix requirement on monaderror-io to >= rather than ==
+
 2.0.2.0 2021-10-17
 ==================
 - factor out throwSig{,'}
