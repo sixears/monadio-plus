@@ -1,3 +1,7 @@
+2.0.2.0 2021-10-17
+==================
+- factor out throwSig{,'}
+
 2.0.1.0 2021-10-16
 ==================
 - doProc takes a simple input

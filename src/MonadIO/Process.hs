@@ -1,5 +1,5 @@
 module MonadIO.Process
- ( doProc, system, systemx, systemN, systemS )
+ ( doProc, system, systemx, systemN, systemS, throwSig, throwSig' )
 where
 
 import Prelude  ( (-), fromIntegral )
@@ -7,6 +7,7 @@ import Prelude  ( (-), fromIntegral )
 -- base --------------------------------
 
 import Data.Bool               ( otherwise )
+import Data.Functor            ( fmap )
 import Data.Ord                ( (>) )
 import Data.Word               ( Word8 )
 import Control.Monad           ( join, return )
@@ -33,12 +34,12 @@ import FPath.Error.FPathError  ( AsFPathError )
 
 -- monaderror-io -----------------------
 
-import MonadError           ( ѥ )
+import MonadError           ( ѥ, fromRight )
 import MonadError.IO.Error  ( AsIOError )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Either  ( pattern 𝕷, pattern 𝕽 )
+import Data.MoreUnicode.Either  ( 𝔼, pattern 𝕷, pattern 𝕽 )
 import Data.MoreUnicode.Lens    ( (⊣) )
 import Data.MoreUnicode.Maybe   ( pattern 𝕹 )
 import Data.MoreUnicode.Monad   ( (≫) )
@@ -158,6 +159,24 @@ systemS c = system stdin c
 
 ----------------------------------------
 
+{- | Given an exit status (and possibly, stdout, stderr, etc); throw iff the
+     exit status is of a signal received. -}
+
+throwSig ∷ ∀ ε β η . (AsProcExitError ε, MonadError ε η) ⇒
+           CmdSpec → (ExitStatus, β) → η (Word8, β)
+
+throwSig _     (ExitVal x     , w) = return (x,w)
+throwSig cspec (ex@(ExitSig _), _) =
+  throwError $ asProcExitError cspec ex (𝕹,𝕹)
+
+----------
+
+throwSig' ∷ ∀ ε β η . (AsProcExitError ε, MonadError ε η) ⇒
+             CmdSpec → 𝔼 ε (ExitStatus, β) → η (Word8, β)
+throwSig' cspec = fromRight ∘ join ∘ fmap (throwSig cspec)
+
+----------------------------------------
+
 {- | Spawn a process; return the exit value, throw on signal.  The `finally`
      argument is always executed immediately after the process returns (whatever
      the exit value).
@@ -171,12 +190,6 @@ doProc ∷ ∀ ε ζ ω σ μ .
 doProc finally input cspec = do
   result ← ѥ $ systemx input cspec
   finally
-  case result of
-    𝕷 e      → throwError e
-    𝕽 (ex,w) → do
-      case ex of
-        ExitVal x → return (x,w)
-        -- we throw if the subprocess sees any signal
-        ExitSig _ → throwError (asProcExitError cspec ex (𝕹,𝕹))
+  throwSig' cspec result
 
 -- that's all, folks! ----------------------------------------------------------
