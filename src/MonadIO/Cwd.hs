@@ -121,7 +121,8 @@ addSlash t              = t ⊕ "/"
      `System.Directory.getCurrentDirectory` throw errors are not caught even
      with `catch`/`catchIO`.
  -}
-getCwd ∷ (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒ μ AbsDir
+getCwd ∷ ∀ ε μ . (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒
+         μ AbsDir
 getCwd = asIOError getWorkingDirectory ≫ parse ∘ addSlash ∘ toText
 
 ----------------------------------------
@@ -130,7 +131,8 @@ getCwd = asIOError getWorkingDirectory ≫ parse ∘ addSlash ∘ toText
      return the name of the dir we changed to, even if that dir has since been
      deleted.
  -}
-getCwd' ∷ (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ) ⇒ μ AbsDir
+getCwd' ∷ ∀ ε μ . (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ)⇒
+          μ AbsDir
 getCwd' = do
   pid      ← liftIO getProcessID
   proc_cwd ← parse @AbsFile $ [fmtT|/proc/%d/cwd|] pid
