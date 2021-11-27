@@ -1,4 +1,4 @@
 { pkgs ? import <nixpkgs> {} }:
 
 with pkgs;
-{ inherit gnugrep; }
+{ inherit coreutils gnugrep; }

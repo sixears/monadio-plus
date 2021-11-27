@@ -24,6 +24,9 @@ module MonadIO.OpenFile
 
   , appendFlags, readFlags, readWriteExFlags, readWriteFlags
   , readWriteNoTruncFlags, writeExFlags, writeFlags, writeNoTruncFlags
+
+  , devnull
+
   , tests
 
   )
@@ -259,6 +262,12 @@ openFile_ enc fomode (review _File_ → fn) = do
 openFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
            HEncoding → FileOpenMode → γ → μ ℍ
 openFile enc fomode fn = asIOError $ openFile_ enc fomode fn
+
+----------------------------------------
+
+{- | An open RW handle to /dev/null. -}
+devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ ℍ
+devnull = openFile Binary (FileRWNoTrunc 𝕹) [absfile|/dev/null|]
 
 ----------------------------------------
 

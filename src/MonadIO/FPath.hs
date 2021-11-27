@@ -11,7 +11,10 @@
 {-# LANGUAGE ViewPatterns        #-}
 
 module MonadIO.FPath
-  ( PResolvable( pResolveDir, pResolve ), getCwd
+  ( PResolvable( pResolveDir, pResolve )
+
+  -- re-exported for backwards compatibility
+  , getCwd
 
   , tests
   )
@@ -91,6 +94,7 @@ import Data.MoreUnicode.Functor  ( (⊳), (⩺) )
 import Data.MoreUnicode.Lens     ( (⊣) )
 import Data.MoreUnicode.Monad    ( (≫), (⪼) )
 import Data.MoreUnicode.Natural  ( ℕ )
+import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- mtl ---------------------------------
 
@@ -112,10 +116,6 @@ import TastyPlus  ( runTestsP, runTestsReplay, runTestTree )
 
 import System.IO.Temp ( getCanonicalTemporaryDirectory,withSystemTempDirectory )
 
--- text --------------------------------
-
-import Data.Text  ( Text, last )
-
 -- unix --------------------------------
 
 import System.Posix.Directory  ( changeWorkingDirectory, getWorkingDirectory )
@@ -124,28 +124,10 @@ import System.Posix.Directory  ( changeWorkingDirectory, getWorkingDirectory )
 --                     local imports                      --
 ------------------------------------------------------------
 
+import MonadIO.Cwd    ( getCwd )
 import MonadIO.FStat  ( FExists( FExists ), fexists )
 
 --------------------------------------------------------------------------------
-
-{- | Current working directory -}
-getCwd ∷ ∀ ε μ .
-         (AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack, MonadIO μ)⇒
-         μ AbsDir
-getCwd = let addSlash "" = ""
-             addSlash t@(last → '/') = t
-             addSlash t = t ⊕ "/"
-          in asIOError getWorkingDirectory ≫ parse ∘ addSlash ∘ toText
-
-getCwdTests ∷ TestTree
-getCwdTests =
-  let getCwd_ ∷ IO (Either FPathIOError AbsDir)
-      getCwd_ = ѥ getCwd
-
-      inTmp = inSystemTempDirectory "MonadIO.FPath.getCwdTests"
-   in testCase "getCwd" $ inTmp $ \ d → getCwd_ ≫ \ cwd → Right d @=? cwd
-
-----------------------------------------
 
 {- | Perform IO within a directory, with declared errors. -}
 _inDir ∷ ∀ ε α τ μ .
@@ -277,7 +259,7 @@ pResolveAbsDirTests =
   let tName   = "pResolveTests.AbsDir"
       inTmp   = inSystemTempDirectory tName
 
-      pResolve_ ∷ Text → IO (Either FPathIOError AbsDir)
+      pResolve_ ∷ 𝕋 → IO (Either FPathIOError AbsDir)
       pResolve_ = ѥ ∘ pResolve
 
       getTmpdir ∷ IO AbsDir
@@ -328,7 +310,7 @@ pResolveDirAbsDirTests =
       withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
       withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
 
-      pResolveDir_ ∷ AbsDir → Text → IO (Either FPathIOError AbsDir)
+      pResolveDir_ ∷ AbsDir → 𝕋 → IO (Either FPathIOError AbsDir)
       pResolveDir_ d = ѥ ∘ pResolveDir d
 
       getTmpdir ∷ IO AbsDir
@@ -372,7 +354,7 @@ instance PResolvable AbsFile where
                        __FPathNotAFileE__ absfileT (toText f)
 
       (_, Empty    ) → -- just a file, no dir part
-                       do c ← pResolveDir @AbsDir d ("."∷Text)
+                       do c ← pResolveDir @AbsDir d ("."∷𝕋)
                           (c ⫻) ⊳ parse @RelFile f
 
       (x    , y    ) → -- dir + file
@@ -386,10 +368,10 @@ pResolveAbsFileTests =
       withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
       withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
 
-      pResolve_ ∷ Text → IO (Either FPathIOError AbsFile)
+      pResolve_ ∷ 𝕋 → IO (Either FPathIOError AbsFile)
       pResolve_ = ѥ ∘ pResolve
 
-      pResolveDir_ ∷ AbsDir → Text → IO (Either FPathIOError AbsFile)
+      pResolveDir_ ∷ AbsDir → 𝕋 → IO (Either FPathIOError AbsFile)
       pResolveDir_ d = ѥ ∘ pResolveDir d
 
    in testGroup "AbsFile"
@@ -439,7 +421,7 @@ pResolveAbsTests =
       withTmp ∷ (MonadIO μ, MonadMask μ) ⇒ (AbsDir → μ α) → μ α
       withTmp = withSystemTempDirectory tName ∘ (∘ __parseAbsDirP__)
 
-      pResolveDir_ ∷ AbsDir → Text → IO (Either FPathIOError Abs)
+      pResolveDir_ ∷ AbsDir → 𝕋 → IO (Either FPathIOError Abs)
       pResolveDir_ d = ѥ ∘ pResolveDir d
 
    in testGroup "Abs"
@@ -497,7 +479,7 @@ pResolveTests = testGroup "pResolve" [ pResolveAbsDirTests
                                      , pResolveAbsFileTests, pResolveAbsTests ]
 
 tests ∷ TestTree
-tests = testGroup "MonadIO.FPath" [ getCwdTests, splitPointsTests
+tests = testGroup "MonadIO.FPath" [ splitPointsTests
                                   , pResolveTests, pResolveDirTests ]
 
 ----------------------------------------

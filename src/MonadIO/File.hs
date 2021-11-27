@@ -17,8 +17,6 @@ module MonadIO.File
   , AccessMode(..), System.IO.IOMode(..)
   , hClose
 
-  , devnull
-
   , access, writable
 
   , chmod, unlink
@@ -151,7 +149,7 @@ import MonadIO.OpenFile  as  OpenFile  hiding ( tests )
 
 import MonadIO.Base         ( chmod, hClose, unlink )
 import MonadIO.FPath        ( pResolve, pResolveDir )
-import MonadIO.NamedHandle  ( ℍ, handle )
+import MonadIO.NamedHandle  ( handle )
 import MonadIO.Tasty        ( TestFileSpec( TFSDir, TFSFile, TFSSymL )
                             , testInTempDirFS )
 
@@ -329,20 +327,14 @@ fileFoldLinesUTF8 a io fn =
 
 ----------------------------------------
 
-{- | An open RW handle to /dev/null. -}
-devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ ℍ
-devnull = openFile Binary (FileRWNoTrunc 𝕹) [absfile|/dev/null|]
-
-----------------------------------------
-
 -- This has to return an absolute path, as the relative path might include
 -- many '..' that can't be represented by FPath.  So we resolve it.
 {- | Read a symlink, return the absolute path to the referent.  Note that as
      with readlink(2); a directory (any `filepath` ending in a '/'; including
      those from an `FPath.{Abs,Rel,}Dir` type) will give rise to an EINVAL. -}
 readlink ∷ ∀ ε γ μ .
-           (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-            AsFilePath γ) ⇒
+           (MonadIO μ, HasCallStack,
+            AsFilePath γ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
            γ → μ Abs
 readlink (review filepath → fp) = do
   r ← asIOError $ readSymbolicLink fp
@@ -400,7 +392,7 @@ readlinkTests =
  -}
 resolvelink ∷ ∀ ε γ μ .
             (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-             AsFilePath γ) ⇒
+             HasCallStack, AsFilePath γ) ⇒
             γ → μ Abs
 resolvelink fp = do
   r ← readlink fp

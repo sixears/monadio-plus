@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.0.2.1
+version:             2.0.3.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -55,6 +55,7 @@ library
                      , MonadIO.Flock
                      , MonadIO.FPath
                      , MonadIO.FStat
+                     , MonadIO.Cwd
                      , MonadIO.NamedHandle
                      , MonadIO.OpenFile
                      , MonadIO.Process
@@ -105,12 +106,12 @@ library
                      , tasty-hunit, temporary, text, text-printer, unix
 
                      , containers-plus >= 0.0.4.0
-                     , env-plus        >= 1.0.2.0
+                     , env-plus        >= 1.0.3.0
                      , exited          >= 1.0.4.0
                      , fpath           >= 1.2.0.0
                      , fstat           >= 1.0.1.0
                      , has-callstack   >= 1.0.1.0
-                     , monaderror-io   >= 1.2.0.0
+                     , monaderror-io   >= 1.2.1.0
                      , more-unicode    >= 0.0.16.0
                      , tasty-plus      >= 1.5.1.0
                      , tfmt            >= 0.2.4.0
@@ -121,7 +122,7 @@ library
   -- Base language which the package is written in.
   default-language:    Haskell2010
 
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 test-suite monadio-plus-test
   ghc-options:      -O2 -W -Wall -fhelpful-errors
@@ -131,4 +132,46 @@ test-suite monadio-plus-test
   build-depends:    base, monadio-plus, tasty
   default-language: Haskell2010
 
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+executable cwd
+  -- add  -rtsopts -prof -auto-all  for profiling
+  ghc-options:         -W -Wall -fhelpful-errors
+  -- add +RTS -xc -KK for 1K stack
+  -- add ?RTS -xt -hy to produce a usage graph
+  main-is:             cwd.hs
+  hs-source-dirs:      bin
+  build-depends:       base, data-textual
+
+                     , fpath, monaderror-io, more-unicode
+
+                     , monadio-plus
+  default-extensions:  LambdaCase
+                     , NoImplicitPrelude
+                     , PatternSynonyms
+                     , TypeApplications
+                     , UnicodeSyntax
+  default-language:    Haskell2010
+
+--------------------------------------------------------------------------------
+
+executable cwd_
+  -- add  -rtsopts -prof -auto-all  for profiling
+  ghc-options:         -W -Wall -fhelpful-errors
+  -- add +RTS -xc -KK for 1K stack
+  -- add ?RTS -xt -hy to produce a usage graph
+  main-is:             cwd_.hs
+  hs-source-dirs:      bin
+  build-depends:       base, data-textual
+
+                     , fpath, monaderror-io, more-unicode
+
+                     , monadio-plus
+  default-extensions:  LambdaCase
+                     , NoImplicitPrelude
+                     , PatternSynonyms
+                     , TypeApplications
+                     , UnicodeSyntax
+  default-language:    Haskell2010
+
+--------------------------------------------------------------------------------

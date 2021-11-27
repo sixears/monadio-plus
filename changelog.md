@@ -1,3 +1,13 @@
+2.0.3.0 2021-11-26
+==================
+
+- add FStat.isDir & FStat.lisDir
+- move getCwd to Cwd (from FPath)
+- add Cwd.getCwdY, Cwd.getCwd'{,Y}
+- move devnull to OpenFile from File
+- add HasCallStack to error-throwing functions
+- add cwd, cwd'
+
 2.0.2.1 2021-10-17
 ==================
 - fix requirement on monaderror-io to >= rather than ==

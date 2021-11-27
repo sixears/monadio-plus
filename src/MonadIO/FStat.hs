@@ -11,8 +11,8 @@
 -- Split here so that FPath, File can both use it
 
 module MonadIO.FStat
-  ( FExists(..), extantP, extantP', fexists, fexists', lfexists, lfexists'
-  , lstat, stat, tests )
+  ( FExists(..), extantP, extantP', fexists, fexists', isDir, lisDir, lfexists
+  , lfexists', lstat, stat, tests )
 where
 
 -- base --------------------------------
@@ -23,7 +23,7 @@ import Data.Bool               ( Bool( False, True ), bool )
 import Data.Eq                 ( Eq )
 import Data.Function           ( ($) )
 import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe( Just, Nothing ), isJust )
+import Data.Maybe              ( Maybe( Just, Nothing ), isJust, maybe )
 import System.Exit             ( ExitCode )
 import System.IO               ( FilePath, IO )
 import Text.Show               ( Show )
@@ -60,7 +60,7 @@ import MonadError.IO.Error  ( AsIOError, IOError
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Bool     ( 𝔹 )
+import Data.MoreUnicode.Bool     ( 𝔹, pattern 𝕱 )
 import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳), (⊳⊳⊳) )
 import Data.MoreUnicode.Lens     ( (⫥) )
 import Data.MoreUnicode.Maybe    ( 𝕄 )
@@ -255,6 +255,22 @@ extantP ∷ ∀ ε δ μ .
            DirType δ ~ DirType (DirType δ), DirType (DirType δ) ~ δ) ⇒
           δ -> μ (DirType δ)
 extantP f = extantP' f ≫ eFromMaybe (userE $ [fmt|'%T' has no extant parent|] f)
+
+----------------------------------------
+
+{- | Find if a path is a directory, by checking the filesystem.  If the path
+     is a symlink which resolves to a directory, then `True` is returned.
+ -}
+isDir ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
+         ρ → μ 𝔹
+isDir = fmap (maybe 𝕱 (≡Directory) ∘ fmap ftype) ∘ stat
+
+{- | Find if a path is a directory, by checking the filesystem.  If the path
+     is a , then `False` is returned.
+ -}
+lisDir ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
+         ρ → μ 𝔹
+lisDir = fmap (maybe 𝕱 (≡Directory) ∘ fmap ftype) ∘ lstat
 
 --------------------------------------------------------------------------------
 
