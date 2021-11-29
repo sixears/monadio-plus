@@ -1,3 +1,7 @@
+2.0.3.2 2021-11-29
+==================
+- fix for pResolveDir @AbsFile in non-extant dir
+
 2.0.3.1 2021-11-27
 ==================
 - add forall clauses to getCwd{,'}

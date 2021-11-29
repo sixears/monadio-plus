@@ -171,13 +171,13 @@ access ∷ ∀ ε ρ μ .
          AccessMode → ρ → μ (𝕄 𝔹)
 access mode ((⫥ filepath) → fp) = asIOErrorY $ go mode fp
   where go ∷ AccessMode → FilePath → IO 𝔹
-        go ACCESS_R   p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕱 𝕱
-        go ACCESS_W   p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕿  𝕱
+        go ACCESS_R   p = Files.fileAccess (p ⫥ filepath) 𝕿 𝕱 𝕱
+        go ACCESS_W   p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕿 𝕱
         go ACCESS_X   p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕱 𝕿
-        go ACCESS_RW  p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕿  𝕱
-        go ACCESS_RX  p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕱 𝕿
-        go ACCESS_WX  p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕿  𝕿
-        go ACCESS_RWX p = Files.fileAccess (p ⫥ filepath) 𝕿  𝕿  𝕿
+        go ACCESS_RW  p = Files.fileAccess (p ⫥ filepath) 𝕿 𝕿 𝕱
+        go ACCESS_RX  p = Files.fileAccess (p ⫥ filepath) 𝕿 𝕱 𝕿
+        go ACCESS_WX  p = Files.fileAccess (p ⫥ filepath) 𝕱 𝕿 𝕿
+        go ACCESS_RWX p = Files.fileAccess (p ⫥ filepath) 𝕿 𝕿 𝕿
 
 {- | Simple shortcut for file (or directory) is writable by this user; `Nothing`
      is returned if file does not exist. -}

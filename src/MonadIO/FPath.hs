@@ -354,7 +354,7 @@ instance PResolvable AbsFile where
                        __FPathNotAFileE__ absfileT (toText f)
 
       (_, Empty    ) → -- just a file, no dir part
-                       do c ← pResolveDir @AbsDir d ("."∷𝕋)
+                       do c ← pResolveDir @AbsDir d (""∷𝕋)
                           (c ⫻) ⊳ parse @RelFile f
 
       (x    , y    ) → -- dir + file
@@ -393,6 +393,9 @@ pResolveAbsFileTests =
         , testCase "withTmp ../ x" $
             withTmp $ \ d → pResolveDir_ d "../x" ≫
                           (Right (d ⊣ dirname ⫻ [relfile|x|] ∷ AbsFile) @=?)
+        , testCase "non-extant dir" $
+            withTmp $ \ d → pResolveDir_ (d ⫻ [reldir|nonesuch/|]) "x" ≫
+                          (Right (d ⫻ [relfile|nonesuch/x|] ∷ AbsFile) @=?)
         ]
 
 
