@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.0.3.2
+version:             2.0.4.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -68,6 +68,8 @@ library
                      , MonadIO.Process.ToMaybeTexts
                      , MonadIO.Tasty
                      , MonadIO.Temp
+                     , MonadIO.User
+
                      , MonadIO.T.MonadIO
 
   -- modules included in this library but not exported.

@@ -1,3 +1,7 @@
+2.0.4.0 2021-11-30
+==================
+- add MonadIO.User
+
 2.0.3.2 2021-11-29
 ==================
 - fix for pResolveDir @AbsFile in non-extant dir
