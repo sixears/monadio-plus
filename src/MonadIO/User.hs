@@ -3,8 +3,8 @@
 
 {- | User lookup (from `/etc/passwd`, etc.) with MonadIO, FPath, etc. -}
 module MonadIO.User
-  ( getPwBy, getPwBy', getpwuid, getuid, homeDir, homeDirectory, pwUID, userDir
-  , userPwEntFromUserEntry )
+  ( getPwBy, getPwBy', getpwuid, getuid, homeDir, homeDirectory, homePath, pwUID
+  , userDir, userPwEntFromUserEntry )
 where
 
 -- base --------------------------------
