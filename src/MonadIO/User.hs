@@ -26,6 +26,7 @@ import Data.Textual  ( Printable, toText )
 -- fpath -------------------------------
 
 import FPath.AbsDir            ( AbsDir, parseAbsDirP )
+import FPath.AppendableFPath   ( AppendableFPath, (⫻) )
 import FPath.Error.FPathError  ( AsFPathError )
 
 -- lens --------------------------------
@@ -128,9 +129,22 @@ homeDirectory = (view userDir ⊳⊳) $ getuid ≫ getpwuid
 homeDir ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒ μ AbsDir
 homeDir = fmap (view userDir) $ getuid ≫ pwUID
 
+----------------------------------------
+
+{- | Construct an absolute dir/file from a relative dir/file, prepended with
+     the home dir. -}
+homePath ∷ ∀ ε μ α β . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+                        AppendableFPath AbsDir β α) ⇒
+           β → μ α
+homePath p = homeDir ≫ return ∘ (⫻ p)
+
+----------------------------------------
+
 {- | Real user ID of the calling process. -}
 getuid ∷ MonadIO μ ⇒ μ UserID
 getuid = liftIO getRealUserID
+
+----------------------------------------
 
 {- | The pw entry, if one exists, for the given user ID. -}
 getpwuid ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
