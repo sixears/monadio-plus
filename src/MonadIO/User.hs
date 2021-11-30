@@ -83,7 +83,7 @@ userDir = lens _userDir (\ upe ud → upe { _userDir = ud })
 
 {- | Convert a `UserEntry` to a `UserPwEnt`; throws error if the home dir is not
      a valid abs dir. -}
-userPwEntFromUserEntry ∷ (AsFPathError ε, MonadError ε η) ⇒
+userPwEntFromUserEntry ∷ ∀ ε η . (AsFPathError ε, MonadError ε η) ⇒
                          UserEntry → η UserPwEnt
 userPwEntFromUserEntry ue = do
   hD ← parseAbsDirP $ PosixUser.homeDirectory ue
@@ -93,20 +93,20 @@ userPwEntFromUserEntry ue = do
 ----------------------------------------
 
 -- | the pw entry, for the given user selector fn & value; error if not exists
-getPwBy' ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+getPwBy' ∷ ∀ ε α μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
            (α → IO UserEntry) → α → μ UserPwEnt
 getPwBy' f a = join ∘ asIOError $ userPwEntFromUserEntry ⊳ f a
 
 ----------------------------------------
 
 {- | The pw entry, if one exists, for the given user selector fn & value. -}
-getPwBy ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+getPwBy ∷ ∀ ε α μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
           (α → IO UserEntry) → α → μ (𝕄 UserPwEnt)
 getPwBy f a = join $ squashNoSuchThing ⊳ ѥ (getPwBy' f a)
 
 {- | Like `getpwuid', but (IO)Error if we're missing an entry for the given
      UID. -}
-pwUID ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+pwUID ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
          UserID → μ UserPwEnt
 pwUID = getPwBy' $ getUserEntryForID
 
@@ -118,7 +118,7 @@ pwUID = getPwBy' $ getUserEntryForID
      Errors if reading the pw db errors, or if the value provided is not a valid
      absolute directory.
  -}
-homeDirectory ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+homeDirectory ∷ ∀ ε μ . (MonadIO μ, AsIOError ε,AsFPathError ε,MonadError ε μ) ⇒
                 μ (𝕄 AbsDir)
 homeDirectory = (view userDir ⊳⊳) $ getuid ≫ getpwuid
 
@@ -126,7 +126,8 @@ homeDirectory = (view userDir ⊳⊳) $ getuid ≫ getpwuid
 
 {- | Like `homeDirectory`, but throws if the getuid entry isn't found. -}
 
-homeDir ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒ μ AbsDir
+homeDir ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+          μ AbsDir
 homeDir = fmap (view userDir) $ getuid ≫ pwUID
 
 ----------------------------------------
@@ -147,7 +148,7 @@ getuid = liftIO getRealUserID
 ----------------------------------------
 
 {- | The pw entry, if one exists, for the given user ID. -}
-getpwuid ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+getpwuid ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
            UserID -> μ (𝕄 UserPwEnt)
 getpwuid = getPwBy getUserEntryForID
 

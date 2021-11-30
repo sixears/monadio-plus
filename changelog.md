@@ -1,3 +1,7 @@
+2.0.5.1 2021-11-30
+==================
+- add explicit type variables in MonadIO.User
+
 2.0.5.0 2021-11-30
 ==================
 - add MonadIO.User.homePath
