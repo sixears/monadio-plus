@@ -10,6 +10,8 @@
 {-# LANGUAGE UnicodeSyntax     #-}
 {-# LANGUAGE ViewPatterns      #-}
 
+{-| IO Operations on files -}
+
 module MonadIO.File
   ( module FStat
   , module OpenFile
@@ -19,7 +21,7 @@ module MonadIO.File
 
   , access, writable
 
-  , chmod, unlink
+  , chmod, unlink, rename
 
   , readlink, resolvelink
 
@@ -161,11 +163,13 @@ import MonadIO.T.ReadlinkTestCases
 
 -- fileAccess ----------------------------------------------
 
+{- | file access combinations -}
 data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX
                 | ACCESS_W | ACCESS_RX
                 | ACCESS_X | ACCESS_RW
   deriving (Eq,Show)
 
+{-| see `Files.fileAccess` -}
 access ∷ ∀ ε ρ μ .
          (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, AsFilePath ρ) ⇒
          AccessMode → ρ → μ (𝕄 𝔹)
@@ -308,6 +312,7 @@ fileWritableTests =
 
 ----------------------------------------
 
+{-| fold a function over the lines of a filehandle -}
 fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
 fileFoldLinesH a io h = do
   eof ← liftIO $ hIsEOF h
@@ -317,7 +322,7 @@ fileFoldLinesH a io h = do
            a' ← io a l
            fileFoldLinesH a' io h
 
-{- | Work over a file, accumulating results, line-by-line. -}
+{- | fold over a file, accumulating results, line-by-line -}
 fileFoldLinesUTF8 ∷ ∀ ε γ α μ .
                     (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ,
                      HasCallStack) ⇒
@@ -409,6 +414,16 @@ resolvelinkTests = _readlinkTests "resolvelink" (ѥ ∘ resolvelink) slName
 
 ----------------------------------------
 
+{- | See `Files.rename` -}
+rename ∷ ∀ ε γ δ μ . (MonadIO μ, HasCallStack, FileAs γ, FileAs δ,
+                      AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+         γ → δ → μ ()
+rename (review _File_ → from) (review _File_ → to) =
+  liftIO $ Files.rename (from ⫥ filepath) (to ⫥ filepath)
+
+----------------------------------------
+
+{-| unit tests -}
 tests ∷ TestTree
 tests = testGroup "MonadIO.File" [ isWritableDirTests, isWritableFileTests
                                  , fileWritableTests, readlinkTests

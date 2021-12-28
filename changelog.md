@@ -1,3 +1,7 @@
+2.0.6.0 2021-12-27
+==================
+- add rename
+
 2.0.5.1 2021-11-30
 ==================
 - add explicit type variables in MonadIO.User
