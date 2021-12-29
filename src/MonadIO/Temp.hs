@@ -8,34 +8,28 @@
 module MonadIO.Temp
   ( mkTempDir
   , tempfile, tempfile', tempfile''
+  , testsWithTempfile
   , withTempDir'', withTempDirCD, withTempDirCD'
   , withTempfile, withTempfile', withTempfile'', withTempfile'''
   )
 where
 
+import Base0T
+
 -- base --------------------------------
 
 import qualified  System.IO
 
-import Control.Monad           ( (>=>), join, forM_, mapM_, return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Either             ( either )
-import Data.Function           ( ($), flip )
+import Control.Monad           ( (>=>) )
+import Data.Function           ( flip )
 import Data.List               ( dropWhileEnd )
 import Data.Tuple              ( uncurry )
-import GHC.Stack               ( HasCallStack )
 import System.Environment      ( getProgName )
-import System.IO               ( FilePath, Handle, IO
+import System.IO               ( FilePath, Handle
                                , SeekMode( AbsoluteSeek )
                                , char8, hSeek, hSetEncoding, hSetNewlineMode
                                , nativeNewlineMode, noNewlineTranslation, utf8
                                )
-
--- base-unicode-symbols ----------------
-
-import Data.Eq.Unicode        ( (≡) )
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
 
 -- bytestring --------------------------
 
@@ -53,18 +47,14 @@ import FPath.AbsDir            ( AbsDir )
 import FPath.AbsFile           ( AbsFile )
 import FPath.AsFilePath        ( filepath )
 import FPath.Dir               ( DirAs( _Dir_ ) )
-import FPath.Error.FPathError  ( AsFPathError )
+import FPath.Error.FPathError  ( AsFPathError, FPathIOError )
 import FPath.Parseable         ( Parseable( parse ) )
 import FPath.PathComponent     ( PathComponent )
-
--- lens --------------------------------
-
-import Control.Lens.Review  ( review )
 
 -- monaderror-io -----------------------
 
 import MonadError           ( ѥ )
-import MonadError.IO        ( asIOError, asIOErrorT )
+import MonadError.IO        ( ӝ, asIOError, asIOErrorT )
 import MonadError.IO.Error  ( AsIOError, IOError )
 
 -- more-unicode ------------------------
@@ -76,9 +66,16 @@ import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( ExceptT, MonadError )
 import Control.Monad.State   ( MonadState, modify, runStateT )
 import Control.Monad.Trans   ( lift )
+
+-- tasty-hunit -------------------------
+
+import Test.Tasty.HUnit  ( Assertion )
+
+-- tasty-plus --------------------------
+
+import TastyPlus  ( ioTests, withResourceCleanup )
 
 -- temporary ---------------------------
 
@@ -295,7 +292,6 @@ withTempfile ∷ ∀ ε τ ω μ .
                τ → (AbsFile → Handle → μ ω) → μ ω
 withTempfile t io = progNamePrefix ≫ \ p → withTempfile' p t io
 
-
 ----------------------------------------
 
 {- | Get the system temporary directory (TMPDIR, etc.) -}
@@ -397,5 +393,18 @@ withTempDirCD' ∷ ∀ ε ω μ .
                   MonadError ε μ, HasCallStack) ⇒
                  (AbsDir → ExceptT ε IO ω) → μ ω
 withTempDirCD' io = withTempDir (\ d → inDir d $ io d)
+
+----------------------------------------
+
+{-| perform tests using a testfile, which is created as a tempfile with given
+    text contents -}
+testsWithTempfile ∷ 𝕋 → [(TestName, AbsFile → Assertion)] → TestTree
+testsWithTempfile txt tsts =
+  let tsts' = [ (n,\ io → io ≫ \ (fn,h) → ӝ (hClose @IOError h) ⪼ tst fn)
+              | (n,tst) ← tsts ]
+   in withResourceCleanup (ӝ $ tempfile @FPathIOError @_ @(AbsFile,ℍ) txt)
+                          (const $ return ())
+                          (\ (fn,_) → ӝ $ unlink @IOError fn)
+                          (\ fn → ioTests "" tsts' (return fn))
 
 -- that's all, folks! ----------------------------------------------------------
