@@ -7,20 +7,15 @@ module MonadIO.Process.OutputHandles
   ( OutputHandles( slurp ) )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad           ( return )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Function           ( ($) )
-import System.IO               ( Handle )
+import System.IO  ( Handle )
 
 -- bytestring --------------------------
 
 import Data.ByteString  ( ByteString )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Text  ( 𝕋 )
 
 ------------------------------------------------------------
 --                     local imports                      --

@@ -32,26 +32,14 @@ module MonadIO.OpenFile
   )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad       ( join, return )
-import Data.Either         ( Either )
-import Data.Function       ( ($), flip )
-import Data.String         ( String )
-import GHC.Stack           ( HasCallStack )
-import System.Exit         ( ExitCode )
-import System.IO           ( IO, IOMode( AppendMode, ReadMode, ReadWriteMode
-                                       , WriteMode ) )
+import Data.Function       ( flip )
+import System.IO           ( IOMode( AppendMode, ReadMode, ReadWriteMode
+                                   , WriteMode ) )
 import System.Posix.Types  ( FileMode )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( toText )
 
 -- exceptions --------------------------
 
@@ -63,42 +51,13 @@ import FPath.AbsFile     ( absfile )
 import FPath.AsFilePath  ( AsFilePath( filepath ) )
 import FPath.File        ( FileAs( _File_ ) )
 
--- lens --------------------------------
-
-import Control.Lens.Review  ( review )
-
 -- monadio-error -----------------------
 
-import MonadError           ( ѥ )
-import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError, IOError, squashNoSuchThingT )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Bool     ( pattern 𝕿, pattern 𝕱 )
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Lens     ( (⫥) )
-import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.Monad    ( (≫) )
-import Data.MoreUnicode.Natural  ( ℕ )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( ExceptT, MonadError )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestTree, testGroup )
+import MonadError.IO.Error  ( IOError, squashNoSuchThingT )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( Assertion, (@=?), testCase )
-
--- tasty-plus --------------------------
-
-import TastyPlus  ( assertIsLeft, assertRight, runTestsP, runTestsReplay
-                  , runTestTree )
+import Test.Tasty.HUnit  ( Assertion )
 
 -- text --------------------------------
 
@@ -118,7 +77,6 @@ import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO              ( MonadIO, liftIO )
 import MonadIO.Base         ( chmod, unlink )
 import MonadIO.NamedHandle  ( HEncoding( Binary, NoEncoding, UTF8 )
                             , HGetContents( hGetContents )

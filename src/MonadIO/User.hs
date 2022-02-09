@@ -7,21 +7,7 @@ module MonadIO.User
   , userDir, userPwEntFromUserEntry )
 where
 
--- base --------------------------------
-
-import Control.Monad  ( join, return )
-import Data.Function  ( ($) )
-import Data.Functor   ( fmap )
-import System.IO      ( IO )
-import Text.Show      ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toText )
+import Base1T
 
 -- fpath -------------------------------
 
@@ -32,24 +18,10 @@ import FPath.Error.FPathError  ( AsFPathError )
 -- lens --------------------------------
 
 import Control.Lens.Getter  ( view )
-import Control.Lens.Lens    ( Lens', lens )
 
 -- monaderror-io -----------------------
 
-import MonadError           ( ѥ )
-import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError, squashNoSuchThing )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
-import Data.MoreUnicode.Maybe    ( 𝕄 )
-import Data.MoreUnicode.Monad    ( (≫) )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
+import MonadError.IO.Error  ( squashNoSuchThing )
 
 -- unix --------------------------------
 
@@ -57,12 +29,6 @@ import qualified  System.Posix.User  as  PosixUser
 
 import System.Posix.Types  ( UserID )
 import System.Posix.User   ( UserEntry, getRealUserID, getUserEntryForID )
-
-------------------------------------------------------------
---                     local imports                      --
-------------------------------------------------------------
-
-import MonadIO  ( MonadIO, liftIO )
 
 ------------------------------------------------------------
 

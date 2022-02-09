@@ -8,23 +8,18 @@ module MonadIO.NamedHandle
   )
 where
 
+import Base1T
+
 -- base --------------------------------
 
 import qualified  System.IO
 
-import Control.Monad           ( return )
 import Control.Monad.Identity  ( Identity( Identity ) )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Function           ( ($), id )
 import System.IO               ( Handle, IOMode( ReadMode, WriteMode )
                                , NewlineMode
                                , char8, nativeNewlineMode, noNewlineTranslation
                                , utf8
                                )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
 
 -- bytestring --------------------------
 
@@ -35,14 +30,6 @@ import Data.ByteString  ( ByteString )
 -- lens --------------------------------
 
 import Control.Lens.Getter  ( view )
-import Control.Lens.Lens    ( Lens', lens )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⩺) )
-import Data.MoreUnicode.Lens     ( (⊣) )
-import Data.MoreUnicode.Monad    ( (⪼) )
-import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- text --------------------------------
 

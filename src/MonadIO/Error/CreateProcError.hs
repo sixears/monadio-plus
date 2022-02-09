@@ -2,22 +2,11 @@ module MonadIO.Error.CreateProcError
   ( AsCreateProcError(..), CreateProcError(..), ProcError, ProcErrorX )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Exception  ( Exception )
-import Data.Eq            ( Eq )
-import Data.Function      ( (.), ($), (&), id )
-import Data.Maybe         ( Maybe( Just ) )
-import GHC.Generics       ( Generic )
-import Text.Show          ( Show( show ) )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable( print ) )
+import GHC.Generics  ( Generic )
 
 -- deepseq -----------------------------
 
@@ -27,23 +16,9 @@ import Control.DeepSeq  ( NFData )
 
 import FPath.Error.FPathError  ( AsFPathError( _FPathError ), FPathIOError )
 
--- has-callstack -----------------------
-
-import HasCallstack  ( HasCallstack( callstack ) )
-
--- lens --------------------------------
-
-import Control.Lens.Lens    ( lens )
-import Control.Lens.Prism   ( Prism', prism' )
-
 -- monaderror-io -----------------------
 
-import MonadError.IO.Error   ( AsIOError( _IOError ), IOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Lens  ( (⊣), (⊢) )
-import Data.MoreUnicode.Maybe  ( pattern 𝕵, pattern 𝕹 )
+import MonadError.IO.Error  ( IOError )
 
 ------------------------------------------------------------
 --                     local imports                      --

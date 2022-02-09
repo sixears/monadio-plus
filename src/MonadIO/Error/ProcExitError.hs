@@ -3,48 +3,19 @@ module MonadIO.Error.ProcExitError
   , asProcExitError, procExitError, stdErr, stdOut )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Data.Eq        ( Eq( (==) ) )
-import Data.Function  ( ($), id )
-import GHC.Generics   ( Generic )
-import GHC.Stack      ( CallStack, HasCallStack, callStack )
-import Text.Show      ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( ( ∘ ) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable( print ) )
+import GHC.Generics  ( Generic )
 
 -- deepseq -----------------------------
 
 import Control.DeepSeq  ( NFData )
 
--- has-callstack -----------------------
-
-import HasCallstack  ( HasCallstack( callstack ) )
-
--- lens --------------------------------
-
-import Control.Lens.Lens    ( Lens', lens )
-import Control.Lens.Prism   ( Prism' )
-import Control.Lens.Review  ( (#) )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Maybe  ( 𝕄, pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.Text   ( 𝕋 )
-
 -- text-printer ------------------------
 
 import qualified  Text.Printer  as  P
-
--- tfmt --------------------------------
-
-import Text.Fmt  ( fmt )
 
 ------------------------------------------------------------
 --                     local imports                      --

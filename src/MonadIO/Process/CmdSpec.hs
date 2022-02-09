@@ -6,20 +6,12 @@ module MonadIO.Process.CmdSpec
   )
 where
 
+import Base1T  hiding  ( (∈) )
+
 -- base --------------------------------
 
-import Data.Eq         ( Eq )
-import Data.Function   ( ($), (&), id )
-import Data.Maybe      ( catMaybes, maybe )
-import Data.Word       ( Word8 )
-import GHC.Generics    ( Generic )
-import Text.Show       ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Eq.Unicode        ( (≡) )
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
+import Data.Maybe    ( catMaybes )
+import GHC.Generics  ( Generic )
 
 -- containers --------------------------
 
@@ -28,10 +20,6 @@ import Data.Set  as  Set
 -- containers-plus ---------------------
 
 import ContainersPlus.Member  ( HasMember( MemberType, (∈), member ) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable( print ), toText )
 
 -- deepseq -----------------------------
 
@@ -50,17 +38,7 @@ import FPath.AsFilePath  ( AsFilePath( filepath ) )
 
 -- lens --------------------------------
 
-import Control.Lens.Lens    ( Lens', lens )
 import Control.Lens.Prism   ( prism )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Either   ( pattern 𝕷, pattern 𝕽 )
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Lens     ( (⊣), (⫥), (⩼), (⊢) )
-import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.String   ( 𝕊 )
-import Data.MoreUnicode.Text     ( 𝕋 )
 
 -- process -----------------------------
 

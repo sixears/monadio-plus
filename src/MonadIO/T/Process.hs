@@ -2,27 +2,15 @@ module MonadIO.T.Process
   ( tests )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Data.Eq        ( Eq )
-import Data.Function  ( ($), (&) )
-import Data.Maybe     ( isJust )
-import Data.Word      ( Word8 )
-import System.Exit    ( ExitCode )
-import System.IO      ( IO )
-import Text.Show      ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
+import Data.Maybe  ( isJust )
 
 -- containers-plus ---------------------
 
 import ContainersPlus.Insert  ( (⨭) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toString, toText )
 
 -- exceptions --------------------------
 
@@ -35,46 +23,18 @@ import FPath.AbsFile  ( AbsFile, absfile )
 -- lens --------------------------------
 
 import Control.Lens.Fold  ( (^?) )
-import Control.Lens.Lens  ( Lens' )
-
--- monaderror-io -----------------------
-
-import MonadError  ( ѥ )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Either   ( 𝔼 )
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
-import Data.MoreUnicode.Maybe    ( pattern 𝕵 )
-import Data.MoreUnicode.Monad    ( (≫) )
-import Data.MoreUnicode.Natural  ( ℕ )
-import Data.MoreUnicode.String   ( 𝕊 )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestName, TestTree, testGroup )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( Assertion, assertBool, assertEqual, testCase )
+import Test.Tasty.HUnit  ( Assertion, assertBool, assertEqual )
 
 -- tasty-plus --------------------------
 
-import TastyPlus  ( (≟), assertIOError, assertRight, runTestsP, runTestsReplay
-                  , runTestTree )
+import TastyPlus  ( (≟), assertIOError )
 
 -- text --------------------------------
 
 import Data.Text  ( unlines )
-
--- tfmt --------------------------------
-
-import Text.Fmt  ( fmt )
 
 ------------------------------------------------------------
 --                     local imports                      --
@@ -84,7 +44,6 @@ import Text.Fmt  ( fmt )
 
 import qualified  MonadIO.Paths  as  Paths
 
-import MonadIO                        ( MonadIO )
 import MonadIO.Error.CreateProcError  ( ProcError )
 import MonadIO.Error.ProcExitError    ( ProcExitError, _ProcExitError
                                       , stdErr, stdOut )

@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.0.7.0
+version:             2.0.8.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -104,20 +104,17 @@ library
   -- Other library packages from which modules are imported.
   build-depends:       base, base-unicode-symbols, bytestring, containers
                      , data-textual, deepseq, directory, exceptions, filelock
-                     , filepath, lens, mtl, prettyprinter, process, safe, tasty
-                     , tasty-hunit, temporary, text, text-printer, unix
+                     , filepath, lens, mtl, process, safe, tasty-hunit
+                     , temporary, text, text-printer, unix
 
-                     , base0t          >= 0.0.1.0
-                     , containers-plus >= 0.0.6.0
+                     , base1t          >= 0.0.3.0
+                     , containers-plus >= 0.0.10.0
                      , env-plus        >= 1.0.3.0
                      , exited          >= 1.0.4.0
                      , fpath           >= 1.2.0.0
                      , fstat           >= 1.0.1.0
-                     , has-callstack   >= 1.0.1.0
                      , monaderror-io   >= 1.2.1.0
-                     , more-unicode    >= 0.0.16.0
                      , tasty-plus      >= 1.5.1.0
-                     , tfmt            >= 0.2.4.0
 
   -- Directories containing source files.
   hs-source-dirs:      src

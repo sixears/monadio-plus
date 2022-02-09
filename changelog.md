@@ -1,6 +1,11 @@
+2.0.8.0 2022-02-08
+==================
+- add MonadIO.Temp.testsWithTempfiles
+- use Base1T
+
 2.0.7.0 2021-12-29
 ==================
-- add MonadIO.Temp.testsWithTempFile
+- add MonadIO.Temp.testsWithTempfile
 
 2.0.6.0 2021-12-27
 ==================

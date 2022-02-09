@@ -7,15 +7,11 @@ module MonadIO.T.ReadlinkTestCases
   , slName, readExp, resolveExp, readlinkTestCases, slTarget )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Data.Function  ( ($), const )
-import System.IO      ( FilePath )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
+import System.IO  ( FilePath )
 
 -- fpath -------------------------------
 
@@ -26,11 +22,6 @@ import FPath.AppendableFPath   ( (⫻) )
 import FPath.Dirname  ( dirname )
 import FPath.RelDir   ( RelDir, reldir )
 import FPath.RelFile  ( RelFile, relfile )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Lens     ( (⊣) )
 
 --------------------------------------------------------------------------------
 

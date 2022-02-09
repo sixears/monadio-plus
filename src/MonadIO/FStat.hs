@@ -15,28 +15,13 @@ module MonadIO.FStat
   , lfexists', lstat, stat, tests )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad           ( Monad, join, return, sequence )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Bool               ( Bool( False, True ), bool )
-import Data.Eq                 ( Eq )
-import Data.Function           ( ($) )
-import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe( Just, Nothing ), isJust, maybe )
-import System.Exit             ( ExitCode )
-import System.IO               ( FilePath, IO )
-import Text.Show               ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Bool.Unicode      ( (∧) )
-import Data.Eq.Unicode        ( (≡) )
-import Data.Function.Unicode  ( (∘) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toString )
+import Data.Bool   ( bool )
+import Data.Maybe  ( isJust )
+import System.IO   ( FilePath )
 
 -- fpath -------------------------------
 
@@ -53,45 +38,13 @@ import FStat  ( FStat, FileType( Directory ), ftype, mkfstat )
 
 -- monadio-error -----------------------
 
-import MonadError           ( ѥ, eFromMaybe )
+import MonadError           ( eFromMaybe )
 import MonadError.IO        ( asIOErrorY )
-import MonadError.IO.Error  ( AsIOError, IOError
-                            , squashInappropriateTypeT, userE )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Bool     ( 𝔹, pattern 𝕱 )
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳), (⊳⊳⊳) )
-import Data.MoreUnicode.Lens     ( (⫥) )
-import Data.MoreUnicode.Maybe    ( 𝕄 )
-import Data.MoreUnicode.Monad    ( (≫) )
-import Data.MoreUnicode.Natural  ( ℕ )
-import Data.MoreUnicode.String   ( 𝕊 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestTree, testGroup )
-
--- tasty-hunit -------------------------
-
-import Test.Tasty.HUnit  ( (@=?), testCase )
-
--- tasty-plus --------------------------
-
-import TastyPlus  ( assertRight, runTestsP, runTestsReplay
-                  , runTestTree )
+import MonadError.IO.Error  ( IOError, squashInappropriateTypeT )
 
 -- safe --------------------------------
 
 import Safe  ( lastDef, lastMay )
-
--- tfmt --------------------------------
-
-import Text.Fmt  ( fmt )
 
 -- unix --------------------------------
 
@@ -104,8 +57,8 @@ data FExists = FExists | NoFExists
 
 {- | Does this 𝕄 FStat refer to a directory? -}
 mIsDir ∷ 𝕄 FStat → 𝔹
-mIsDir (fmap ftype → Just Directory) = True
-mIsDir _                             = False
+mIsDir (fmap ftype → 𝕵 Directory) = 𝕿
+mIsDir _                          = 𝕱
 
 fexists_ ∷ (Monad η, AsFilePath ρ) ⇒ 𝔹 → (ρ → η (𝕄 FStat)) → ρ → η FExists
 fexists_ checkDir g f = bool NoFExists FExists ⊳ do
@@ -122,13 +75,13 @@ fexists_ checkDir g f = bool NoFExists FExists ⊳ do
      exist.
  -}
 fexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒ τ → μ FExists
-fexists = fexists_ True stat
+fexists = fexists_ 𝕿 stat
 
 {- | Like `fexists`; but for symlinks, checks the symlink rather than
      dereferencing; so dangling symlinks are considered to exist. -}
 lfexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
            τ → μ FExists
-lfexists = fexists_ True lstat
+lfexists = fexists_ 𝕿 lstat
 
 ----------
 
@@ -156,11 +109,11 @@ fexistsTests =
      accurate.
  -}
 fexists' ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ)⇒ τ → μ FExists
-fexists' = fexists_ False stat
+fexists' = fexists_ 𝕱 stat
 
 lfexists' ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
             τ → μ FExists
-lfexists' = fexists_ False lstat
+lfexists' = fexists_ 𝕱 lstat
 
 ----------
 
@@ -215,13 +168,12 @@ statTests =
           f (ѥ @IOError (stat input)) ≫ assertRight (expect @=?)
       isDirectory = ((Directory ≡) ∘ ftype)
    in testGroup "stat"
-                [ testStat (Just True)  [absdir|/etc/|]        (isDirectory ⊳⊳⊳)
-                , testStat (Just False) [absfile|/etc/passwd|] (isDirectory ⊳⊳⊳)
-                , testStat (Just False) [absdir|/etc/passwd/|] (isDirectory ⊳⊳⊳)
-                , testStat Nothing      [absfile|/nonsuch|]    (isDirectory ⊳⊳⊳)
-                , testStat Nothing      [absfile|/etc/passwd/nonsuch|]
-                                                               (isDirectory ⊳⊳⊳)
-                , testStat Nothing      [absdir|/nonsuch/|]    (isDirectory ⊳⊳⊳)
+                [ testStat (𝕵 𝕿) [absdir|/etc/|]               (isDirectory ⊳⊳⊳)
+                , testStat (𝕵 𝕱) [absfile|/etc/passwd|]        (isDirectory ⊳⊳⊳)
+                , testStat (𝕵 𝕱) [absdir|/etc/passwd/|]        (isDirectory ⊳⊳⊳)
+                , testStat 𝕹     [absfile|/nonsuch|]           (isDirectory ⊳⊳⊳)
+                , testStat 𝕹     [absfile|/etc/passwd/nonsuch|](isDirectory ⊳⊳⊳)
+                , testStat 𝕹     [absdir|/nonsuch/|]           (isDirectory ⊳⊳⊳)
                 ]
 
 ----------------------------------------
@@ -232,7 +184,7 @@ extantP' ∷ ∀ ε α μ .
           (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath (DirType α),
            HasParentMay α, HasParentMay (DirType α),
            DirType α ~ DirType (DirType α), DirType (DirType α) ~ α) ⇒
-          α -> μ (Maybe (DirType α))
+          α -> μ (𝕄 (DirType α))
 extantP' f = do
   fex ← (sequence $ (\ d -> (d,) ⊳ fexists d) ⊳ parents' f)
   return $ lastMay [ d | (d,g) ← fex, g ≡ FExists ]

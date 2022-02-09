@@ -5,21 +5,11 @@ where
 
 import Prelude  ( error )
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad           ( join, return )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Bool               ( Bool( False, True ) )
-import Data.Eq                 ( (==) )
-import Data.Function           ( ($) )
-import Data.Functor            ( (<$>) )
-import Data.Maybe              ( maybe )
-import GHC.Stack               ( HasCallStack )
-import System.IO               ( Handle )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
+import System.IO  ( Handle )
 
 -- env-plus ----------------------------
 
@@ -30,25 +20,9 @@ import Env.Types  ( strsEnv )
 import FPath.AsFilePath        ( filepath )
 import FPath.Error.FPathError  ( AsFPathError )
 
--- lens --------------------------------
-
-import Control.Lens.Review  ( (#), review )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
-
 -- monaderror-io -----------------------
 
-import MonadError           ( mapMError, splitMError )
-import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
+import MonadError  ( mapMError )
 
 -- process -----------------------------
 
@@ -102,15 +76,15 @@ createProc_ cp = do
                              , SysProc.create_group  =
                                    cp ⊣ createGroup == CreateGroup
 
-                             , SysProc.close_fds     = True
-                             , SysProc.delegate_ctlc = True
-                             , SysProc.new_session   = False
+                             , SysProc.close_fds     = 𝕿
+                             , SysProc.delegate_ctlc = 𝕿
+                             , SysProc.new_session   = 𝕱
                              , SysProc.child_group   = 𝕹
                              , SysProc.child_user    = 𝕹
 
-                             , SysProc.detach_console     = False -- windoze only
-                             , SysProc.create_new_console = False -- windoze only
-                             , SysProc.use_process_jobs   = False -- windoze only
+                             , SysProc.detach_console     = 𝕱 -- windoze only
+                             , SysProc.create_new_console = 𝕱 -- windoze only
+                             , SysProc.use_process_jobs   = 𝕱 -- windoze only
                              }
 
   let p' = mapMError (_CreateProcErr #) p

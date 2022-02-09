@@ -8,28 +8,32 @@
 module MonadIO.Temp
   ( mkTempDir
   , tempfile, tempfile', tempfile''
-  , testsWithTempfile
+  , testsWithTempfile, testsWithTempfiles
   , withTempDir'', withTempDirCD, withTempDirCD'
   , withTempfile, withTempfile', withTempfile'', withTempfile'''
+
+  , tests
   )
 where
 
-import Base0T
+import Base1T
 
 -- base --------------------------------
 
 import qualified  System.IO
 
-import Control.Monad           ( (>=>) )
-import Data.Function           ( flip )
-import Data.List               ( dropWhileEnd )
-import Data.Tuple              ( uncurry )
-import System.Environment      ( getProgName )
-import System.IO               ( FilePath, Handle
-                               , SeekMode( AbsoluteSeek )
-                               , char8, hSeek, hSetEncoding, hSetNewlineMode
-                               , nativeNewlineMode, noNewlineTranslation, utf8
-                               )
+import Control.Monad          ( (>=>) )
+import Data.Function          ( flip )
+import Data.Functor.Identity  ( Identity( Identity ), runIdentity )
+import Data.List              ( dropWhileEnd )
+import Data.Maybe             ( fromJust )
+import Data.Tuple             ( uncurry )
+import System.Environment     ( getProgName )
+import System.IO              ( FilePath, Handle
+                              , SeekMode( AbsoluteSeek )
+                              , char8, hSeek, hSetEncoding, hSetNewlineMode
+                              , nativeNewlineMode, noNewlineTranslation, utf8
+                              )
 
 -- bytestring --------------------------
 
@@ -48,21 +52,21 @@ import FPath.AbsFile           ( AbsFile )
 import FPath.AsFilePath        ( filepath )
 import FPath.Dir               ( DirAs( _Dir_ ) )
 import FPath.Error.FPathError  ( AsFPathError, FPathIOError )
+import FPath.File              ( FileAs )
 import FPath.Parseable         ( Parseable( parse ) )
 import FPath.PathComponent     ( PathComponent )
 
+-- lens --------------------------------
+
+import Control.Lens.At         ( ix )
+import Control.Lens.Each       ( Each, each )
+import Control.Lens.Traversal  ( mapMOf )
+import Control.Lens.Tuple      ( _1, _2, _3 )
+
 -- monaderror-io -----------------------
 
-import MonadError           ( ѥ )
-import MonadError.IO        ( ӝ, asIOError, asIOErrorT )
-import MonadError.IO.Error  ( AsIOError, IOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Lens     ( (⫥) )
-import Data.MoreUnicode.Monad    ( (≫), (⪼) )
-import Data.MoreUnicode.Text     ( 𝕋 )
+import MonadError.IO        ( ӝ, asIOErrorT )
+import MonadError.IO.Error  ( IOError )
 
 -- mtl ---------------------------------
 
@@ -75,7 +79,7 @@ import Test.Tasty.HUnit  ( Assertion )
 
 -- tasty-plus --------------------------
 
-import TastyPlus  ( ioTests, withResourceCleanup )
+import TastyPlus  ( (≟), ioTests, withResourceCleanup )
 
 -- temporary ---------------------------
 
@@ -86,6 +90,8 @@ import System.IO.Temp  ( createTempDirectory, getCanonicalTemporaryDirectory
 
 import qualified  Data.Text.IO  as  TextIO
 
+import Data.Text  ( unpack )
+
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
@@ -93,6 +99,7 @@ import qualified  Data.Text.IO  as  TextIO
 import MonadIO            ( warn )
 import MonadIO.Base       ( hClose, unlink )
 import MonadIO.Directory  ( inDir )
+import MonadIO.OpenFile   ( readFile )
 
 --------------------------------------------------------------------------------
 
@@ -400,11 +407,89 @@ withTempDirCD' io = withTempDir (\ d → inDir d $ io d)
     text contents -}
 testsWithTempfile ∷ 𝕋 → [(TestName, AbsFile → Assertion)] → TestTree
 testsWithTempfile txt tsts =
-  let tsts' = [ (n,\ io → io ≫ \ (fn,h) → ӝ (hClose @IOError h) ⪼ tst fn)
-              | (n,tst) ← tsts ]
-   in withResourceCleanup (ӝ $ tempfile @FPathIOError @_ @(AbsFile,ℍ) txt)
-                          (const $ return ())
-                          (\ (fn,_) → ӝ $ unlink @IOError fn)
-                          (\ fn → ioTests "" tsts' (return fn))
+  testsWithTempfiles (Identity txt) (second (∘ runIdentity) ⊳ tsts)
+
+----------
+
+testsWithTempfileTests ∷ TestTree
+testsWithTempfileTests =
+  let foo = "foo" ∷ 𝕋
+
+      doTest txt exp =
+        let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
+         in testsWithTempfile txt [(unpack exp,(\ x→ readfile x ≫ (≟ exp)))]
+  in testGroup "testsWithTempfile"
+               [ doTest foo foo
+               ]
+
+----------------------------------------
+
+{- | Perform tests using a number of testfiles, which are created as tempfiles
+     with the given contents.
+
+     This complex type signature roughly equates to
+
+     > (OutputData τ, FileAs β) ⇒ φ τ → [(TestName, φ β → Assertion)] → TestTree
+
+     Where φ is a traversable collection; e.g., @[τ]@ or @(τ,τ,τ)@.
+     Note that to use a single tempfile, you need an instance of @Each@ that has
+     a single data member - e.g., @Identity@.
+-}
+testsWithTempfiles ∷ ∀ τ β σ ξ α γ .
+                     (OutputData τ, FileAs β, Each σ ξ τ (AbsFile, ℍ),
+                      Each ξ α (β, Handle) (), Each ξ γ (β, Handle) β) ⇒
+                     σ → [(TestName, γ → Assertion)] → TestTree
+
+testsWithTempfiles txts tsts =
+  let yy f xs = f $ xs & each ⊧ fst
+      hclose  = ӝ ∘ hClose @IOError
+      rm      = ӝ ∘ unlink @IOError
+      tempFile = tempfile @FPathIOError @_ @(AbsFile,ℍ)
+   in withResourceCleanup (ӝ $ mapMOf each tempFile txts)
+                          ((\ xs → mapMOf each (hclose ∘ snd) xs ⪼ return()))
+                          ((\ xs → mapMOf each (rm     ∘ fst) xs ⪼ return()))
+                          ((\ x → ioTests "" (fmap (second yy) tsts) x))
+
+----------
+
+testsWithTempfilesTests ∷ TestTree
+testsWithTempfilesTests =
+  let foo = "foo" ∷ 𝕋
+      bar = "bar" ∷ 𝕋
+      baz = "baz" ∷ 𝕋
+
+      doTest txts exps =
+        let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
+         in testsWithTempfiles txts
+                               [ (unpack t,(\ x→ readfile (x⊣f) ≫ (≟ t)))
+                               | (t,f) ← exps]
+      doTest' txts exps =
+        let readfile ∷ 𝕄 AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError ∘ fromJust
+         in testsWithTempfiles txts [ (unpack t,(\x→(readfile (x⩼f)) ≫ (≟ t)))
+                                    | (t,f) ← exps]
+  in testGroup "testsWithTempfiles"
+               [ doTest (Identity foo) [(foo,_1)]
+               , doTest (foo,bar) [(foo,_1),(bar,_2)]
+               , doTest (foo,bar,baz) [(foo,_1),(bar,_2),(baz,_3)]
+               , doTest' [foo,bar,baz] [(foo,ix 0),(bar,ix 1),(baz,ix 2)]
+               ]
+
+-- tests -----------------------------------------------------------------------
+
+tests ∷ TestTree
+tests = testGroup "Temp" [ testsWithTempfileTests, testsWithTempfilesTests ]
+
+----------------------------------------
+
+_test ∷ IO ExitCode
+_test = runTestTree tests
+
+--------------------
+
+_tests ∷ String → IO ExitCode
+_tests = runTestsP tests
+
+_testr ∷ String → ℕ → IO ExitCode
+_testr = runTestsReplay tests
 
 -- that's all, folks! ----------------------------------------------------------

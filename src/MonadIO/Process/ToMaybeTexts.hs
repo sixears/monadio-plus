@@ -2,14 +2,7 @@ module MonadIO.Process.ToMaybeTexts
   ( ToMaybeTexts( toMaybeTexts ) )
 where
 
--- base --------------------------------
-
-import Data.Function  ( ($) )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Maybe  ( 𝕄, pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.Text   ( 𝕋 )
+import Base1T
 
 -- text --------------------------------
 

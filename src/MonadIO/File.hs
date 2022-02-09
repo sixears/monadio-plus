@@ -33,36 +33,16 @@ module MonadIO.File
   )
 where
 
+import Base1T
 import Prelude  ( error )
 
 -- base --------------------------------
 
-import Control.Monad           ( return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Either             ( Either )
-import Data.Eq                 ( Eq )
-import Data.Function           ( ($), const )
-import Data.List               ( isSuffixOf, last, or )
-import Data.String             ( String )
-import GHC.Stack               ( HasCallStack )
-import System.Exit             ( ExitCode )
-import System.IO               ( FilePath, Handle, IO
-                               , IOMode( AppendMode, ReadMode, ReadWriteMode
-                                       , WriteMode )
-                               , hIsEOF
-                               )
-import Text.Show               ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Eq.Unicode        ( (≡) )
-import Data.Function.Unicode  ( (∘) )
-import Data.List.Unicode      ( (∈) )
-import Data.Monoid.Unicode    ( (⊕) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( toString )
+import Data.List  ( isSuffixOf, or )
+import System.IO  ( FilePath, Handle, IOMode( AppendMode, ReadMode
+                                            , ReadWriteMode, WriteMode )
+                  , hIsEOF
+                  )
 
 -- fpath -------------------------------
 
@@ -85,57 +65,25 @@ import FStat  ( FStat, FileType( Directory, SymbolicLink ), ftype )
 -- lens --------------------------------
 
 import Control.Lens.Getter  ( view )
-import Control.Lens.Review  ( review )
 
 import qualified System.FilePath.Lens
 
 -- monadio-error -----------------------
 
-import MonadError           ( ѥ )
-import MonadError.IO        ( asIOError, asIOErrorY )
-import MonadError.IO.Error  ( AsIOError, IOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Bool     ( 𝔹, pattern 𝕿, pattern 𝕱 )
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
-import Data.MoreUnicode.Lens     ( (⊣), (⫥) )
-import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
-
-import Data.MoreUnicode.Monad    ( (≫) )
-import Data.MoreUnicode.Monoid   ( ю )
-import Data.MoreUnicode.Natural  ( ℕ )
-import Data.MoreUnicode.String   ( 𝕊 )
-import Data.MoreUnicode.Text     ( 𝕋 )
+import MonadError.IO        ( asIOErrorY )
+import MonadError.IO.Error  ( IOError )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Except  ( MonadError )
 import Control.Monad.Trans   ( lift )
-
--- safe --------------------------------
-
-import Safe  ( headMay )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestName, TestTree, testGroup )
-
--- tasty-hunit -------------------------
-
-import Test.Tasty.HUnit  ( (@=?), testCase )
 
 -- tasty-plus --------------------------
 
-import TastyPlus  ( (≟), assertRight, runTestsP, runTestsReplay, runTestTree )
+import TastyPlus  ( (≟) )
 
 -- text --------------------------------
 
 import qualified  Data.Text.IO  as  TextIO
-
--- tfmt --------------------------------
-
-import Text.Fmt  ( fmt )
 
 -- unix --------------------------------
 
@@ -343,24 +291,24 @@ readlink ∷ ∀ ε γ μ .
            γ → μ Abs
 readlink (review filepath → fp) = do
   r ← asIOError $ readSymbolicLink fp
-  case headMay r of
-    𝕹  → error $ [fmt|empty symlink found at '%s'|] fp
-    𝕵 '/' → -- last is safe, as fp is non-empty, given that headMay fp
-               -- is not 𝕹
+  case head r of
+    𝕹     → error $ [fmt|empty symlink found at '%s'|] fp
+    𝕵 '/' → -- last is safe, as fp is non-empty, given that head fp
+            -- is not 𝕹
                case last r of
-                 '/' → AbsD ⊳ pResolveDir root r
-                 _   → AbsF ⊳ pResolveDir root r
+                 𝕵 '/' → AbsD ⊳ pResolveDir root r
+                 _     → AbsF ⊳ pResolveDir root r
     𝕵 _   → do d ← pResolve (fp ⊣ System.FilePath.Lens.directory)
                    -- last is safe, as fp is non-empty, given that headMay fp
                    -- is not 𝕹
                case last r of
-                 '/' → AbsD ⊳ pResolveDir d r
-                 _   → if or [ r ∈ [ ".", ".." ]
-                             , "/." `isSuffixOf` r
-                             , "/.." `isSuffixOf` r
-                             ]
-                       then AbsD ⊳ pResolveDir d r
-                       else AbsF ⊳ pResolveDir d r
+                 𝕵 '/' → AbsD ⊳ pResolveDir d r
+                 _     → if or [ r ∈ [ ".", ".." ]
+                               , "/." `isSuffixOf` r
+                               , "/.." `isSuffixOf` r
+                               ]
+                         then AbsD ⊳ pResolveDir d r
+                         else AbsF ⊳ pResolveDir d r
 
 ----------
 

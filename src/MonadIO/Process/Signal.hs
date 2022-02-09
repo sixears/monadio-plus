@@ -4,40 +4,19 @@ module MonadIO.Process.Signal
   ( Signal( Signal ), allSigs, sigMap )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Data.Eq        ( Eq )
-import Data.Function  ( ($) )
-import Data.Maybe     ( Maybe( Just, Nothing ) )
-import Data.Ord       ( Ord )
-import Data.Word      ( Word8 )
 import GHC.Generics   ( Generic )
-import Prelude        ( fromIntegral )
-import Text.Show      ( Show )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
 
 -- containers --------------------------
 
 import qualified  Data.Map  as  Map
 
--- data-textual ------------------------
-
-import Data.Textual  ( Printable( print ) )
-
 -- deepseq -----------------------------
 
 import Control.DeepSeq  ( NFData )
-
--- fmt ---------------------------------
-
-import Text.Fmt  ( fmt )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳) )
 
 -- text --------------------------------
 

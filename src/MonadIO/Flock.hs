@@ -3,13 +3,7 @@ module MonadIO.Flock
   , flock, flockNB, unflock )
 where
 
--- base --------------------------------
-
-import Data.Function  ( ($) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toText )
+import Base1T
 
 -- filelock ----------------------------
 
@@ -20,23 +14,6 @@ import System.FileLock  ( FileLock, SharedExclusive
 
 import FPath.AsFilePath  ( AsFilePath( filepath ) )
 import FPath.File        ( FileAs )
-
--- lens --------------------------------
-
-import Control.Lens.Lens  ( Lens', lens )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳), (⊳⊳) )
-import Data.MoreUnicode.Lens     ( (⊣), (⫥))
-import Data.MoreUnicode.Maybe    ( 𝕄 )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
-------------------------------------------------------------
---                     local imports                      --
-------------------------------------------------------------
-
-import MonadIO  ( MonadIO, liftIO )
 
 --------------------------------------------------------------------------------
 

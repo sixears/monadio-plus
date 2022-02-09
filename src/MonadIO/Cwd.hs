@@ -17,29 +17,11 @@ module MonadIO.Cwd
   )
 where
 
-import Prelude  ( (-) )
+import Base1T  hiding  ( last )
 
 -- base --------------------------------
 
-import Control.Monad           ( return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Bool               ( not )
-import Data.Either             ( either )
-import Data.Function           ( ($), const )
-import Data.List               ( isSuffixOf, length, take )
-import Data.String             ( String )
-import System.Exit             ( ExitCode )
-import System.IO               ( IO )
-
--- base-unicode-symbols ----------------
-
-import Data.Bool.Unicode      ( (∧) )
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( toString, toString, toText )
+import Data.List  ( isSuffixOf, length, take )
 
 -- exceptions --------------------------
 
@@ -52,37 +34,6 @@ import FPath.AbsFile           ( AbsFile )
 import FPath.Error.FPathError  ( AsFPathError, FPathIOError )
 import FPath.Parseable         ( parse )
 
--- monaderror-io -----------------------
-
-import MonadError           ( ѥ )
-import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Either   ( 𝔼, pattern 𝕽 )
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Maybe    ( 𝕄, pattern 𝕵, pattern 𝕹 )
-import Data.MoreUnicode.Monad    ( (≫), (⪼) )
-import Data.MoreUnicode.Natural  ( ℕ )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestTree, testGroup )
-
--- tasty-hunit -------------------------
-
-import Test.Tasty.HUnit  ( (@=?), testCase )
-
--- tasty-plus --------------------------
-
-import TastyPlus  ( runTestsP, runTestsReplay, runTestTree )
-
 -- temporary ---------------------------
 
 import System.IO.Temp ( withSystemTempDirectory )
@@ -90,10 +41,6 @@ import System.IO.Temp ( withSystemTempDirectory )
 -- text --------------------------------
 
 import Data.Text  ( last )
-
--- tfmt --------------------------------
-
-import Text.Fmt  ( fmtT )
 
 -- unix --------------------------------
 

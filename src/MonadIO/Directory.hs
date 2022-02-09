@@ -9,21 +9,12 @@ module MonadIO.Directory
   ( chdir, inDir, mkdir, mkpath, nuke )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad           ( filterM, forM_, join, return, when )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Function           ( ($) )
-import Data.Functor            ( fmap )
-import Data.Maybe              ( Maybe( Just, Nothing ) )
-import GHC.Stack               ( HasCallStack )
-import System.IO               ( IO )
-import System.Posix.Types      ( FileMode )
-
--- base-unicode-symbols ----------------
-
-import Data.Eq.Unicode        ( (≡) )
-import Data.Function.Unicode  ( (∘) )
+import Control.Monad       ( filterM )
+import System.Posix.Types  ( FileMode )
 
 -- directory ---------------------------
 
@@ -41,23 +32,10 @@ import FPath.Dir         ( DirAs( _Dir_ ) )
 import FPath.DirType     ( DirType )
 import FPath.Parent      ( HasParentMay, parents' )
 
--- lens --------------------------------
-
-import Control.Lens.Review  ( review )
-
 -- monaderror-io -----------------------
 
-import MonadError           ( ѥ )
-import MonadError.IO        ( ӝ, asIOError )
-import MonadError.IO.Error  ( AsIOError, IOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Monad  ( (⪼) )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( ExceptT, MonadError )
+import MonadError.IO        ( ӝ )
+import MonadError.IO.Error  ( IOError )
 
 -- safe --------------------------------
 
@@ -135,9 +113,9 @@ mkpath ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallSt
 mkpath d p = do
   to_make ← filterM (fmap (≡ NoFExists) ∘ fexists) (parents' d)
   case headMay to_make of
-    Nothing → return () -- nothing to do, all exist
-    Just t  → -- make the intervening dirs, carefully; in case of any error,
-              -- try to nuke those we freshly made
-              onException (forM_ to_make (\ a → mkdir a p)) (nuke t)
+    𝕹    → return () -- nothing to do, all exist
+    𝕵 t  → -- make the intervening dirs, carefully; in case of any error,
+           -- try to nuke those we freshly made
+           onException (forM_ to_make (\ a → mkdir a p)) (nuke t)
 
 -- that's all, folks! ----------------------------------------------------------

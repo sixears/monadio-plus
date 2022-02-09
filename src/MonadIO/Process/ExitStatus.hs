@@ -5,22 +5,11 @@ module MonadIO.Process.ExitStatus
   )
 where
 
-import Prelude  ( fromIntegral )
+import Base1T
 
 -- base --------------------------------
 
-import Control.Monad  ( when )
-import Data.Bool      ( Bool( False, True ), not )
-import Data.Eq        ( Eq )
-import Data.Function  ( ($), id )
-import Data.Word      ( Word8 )
 import GHC.Generics   ( Generic )
-import System.Exit    ( ExitCode( ExitFailure, ExitSuccess ) )
-import Text.Show      ( Show )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable( print ) )
 
 -- deepseq -----------------------------
 
@@ -30,18 +19,10 @@ import Control.DeepSeq  ( NFData )
 
 import Exited  ( ToExitCode( toExitCode ) )
 
--- fmt ---------------------------------
-
-import Text.Fmt  ( fmt )
-
 -- lens --------------------------------
 
-import Control.Lens        ( Lens', view )
+import Control.Lens        ( view )
 import Control.Lens.Tuple  ( _1 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError, throwError )
 
 -- text --------------------------------
 
@@ -70,9 +51,9 @@ instance ToExitCode ExitStatus where
                              _ → ExitFailure $ fromIntegral e
   toExitCode (ExitSig _) = ExitFailure 255
 
-exitOkay ∷ HasExitStatus ev ⇒ ev → Bool
-exitOkay (view exitVal → ExitVal 0) = True
-exitOkay _                          = False
+exitOkay ∷ HasExitStatus ev ⇒ ev → 𝔹
+exitOkay (view exitVal → ExitVal 0) = 𝕿
+exitOkay _                          = 𝕱
 
 evOK       ∷ ExitStatus
 evOK       =  ExitVal 0

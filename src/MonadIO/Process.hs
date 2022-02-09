@@ -2,31 +2,11 @@ module MonadIO.Process
  ( doProc, system, systemx, systemN, systemS, throwSig, throwSig' )
 where
 
-import Prelude  ( (-), fromIntegral )
-
--- base --------------------------------
-
-import Data.Bool               ( otherwise )
-import Data.Functor            ( fmap )
-import Data.Ord                ( (>) )
-import Data.Word               ( Word8 )
-import Control.Monad           ( join, return )
-import Control.Monad.IO.Class  ( MonadIO, liftIO )
-import Data.Function           ( ($) )
-import GHC.Stack               ( HasCallStack )
-import System.Exit             ( ExitCode( ExitFailure, ExitSuccess ) )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
+import Base1T  hiding  ( (∉) )
 
 -- containers-plus ---------------------
 
 import ContainersPlus.Member  ( HasMember( (∉) ) )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable )
 
 -- fpath -------------------------------
 
@@ -34,19 +14,7 @@ import FPath.Error.FPathError  ( AsFPathError )
 
 -- monaderror-io -----------------------
 
-import MonadError           ( ѥ, fromRight )
-import MonadError.IO.Error  ( AsIOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Either  ( 𝔼, pattern 𝕷, pattern 𝕽 )
-import Data.MoreUnicode.Lens    ( (⊣) )
-import Data.MoreUnicode.Maybe   ( pattern 𝕹 )
-import Data.MoreUnicode.Monad   ( (≫) )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError, throwError )
+import MonadError  ( fromRight )
 
 -- process -----------------------------
 

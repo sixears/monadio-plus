@@ -4,17 +4,11 @@ module MonadIO.Process.MkInputStream
   ( MkInputStream( mkIStream ) )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad           ( return )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Function           ( ($) )
-import GHC.Stack               ( HasCallStack )
-import System.IO               ( Handle )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
+import System.IO  ( Handle )
 
 -- bytestring --------------------------
 
@@ -29,23 +23,9 @@ import FPath.File              ( FileAs )
 
 import Control.Lens.Getter  ( view )
 
--- monaderror-io -----------------------
-
-import MonadError.IO.Error  ( AsIOError )
-
 -- monadio-plus ------------------------
 
 import MonadIO.Temp  ( tempfile )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Functor  ( (⊳) )
-import Data.MoreUnicode.Lens     ( (⊣) )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
 
 -- process -----------------------------
 

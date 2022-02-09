@@ -6,19 +6,14 @@ module MonadIO.Tasty
   ( TestFileSpec(..), testInTempDir, testInTempDirFS )
 where
 
+import Base1T
+
 -- base --------------------------------
 
-import Control.Monad           ( (>=>), forM_ )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Foldable           ( Foldable )
-import Data.Function           ( ($) )
-import GHC.Stack               ( HasCallStack )
-import System.IO               ( FilePath, IO )
-import System.Posix.Types      ( FileMode )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
+import Control.Monad       ( (>=>) )
+import Data.Foldable       ( Foldable )
+import System.IO           ( FilePath )
+import System.Posix.Types  ( FileMode )
 
 -- exceptions --------------------------
 
@@ -37,22 +32,8 @@ import FPath.RelFile           ( RelFile )
 
 -- monaderror-io -----------------------
 
-import MonadError.IO        ( ӝ, asIOError, eitherIOThrow )
-import MonadError.IO.Error  ( AsIOError, IOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Lens   ( (⊣), (⫥) )
-import Data.MoreUnicode.Monad  ( (≪), (⪼) )
-import Data.MoreUnicode.Text   ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestTree )
+import MonadError.IO        ( ӝ, eitherIOThrow )
+import MonadError.IO.Error  ( IOError )
 
 -- tasty-plus --------------------------
 

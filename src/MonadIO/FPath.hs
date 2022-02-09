@@ -20,36 +20,18 @@ module MonadIO.FPath
   )
 where
 
+import Base1T
+
 -- base --------------------------------
 
 import qualified  Data.List
 
-import Control.Monad           ( filterM, join, return )
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Either             ( Either( Left, Right ) )
-import Data.Functor            ( fmap )
-import Data.Function           ( ($), const )
-import Data.List               ( dropWhileEnd, head, reverse, scanl, scanr,zip )
-import Data.String             ( String )
-import Data.Tuple              ( fst )
-import GHC.Exts                ( toList )
-import GHC.Stack               ( HasCallStack )
-import System.Exit             ( ExitCode )
-import System.IO               ( IO )
-
--- base-unicode-symbols ----------------
-
-import Data.Eq.Unicode        ( (≡) )
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
+import Control.Monad  ( filterM )
+import Data.List      ( dropWhileEnd, reverse, scanl, scanr,zip )
 
 -- containers --------------------------
 
-import Data.Sequence  ( Seq( Empty ), breakr, fromList )
-
--- data-textual ------------------------
-
-import Data.Textual  ( Printable, toString, toText )
+import Data.Sequence  ( Seq( Empty ), breakr {- , fromList -} )
 
 -- directory ---------------------------
 
@@ -78,39 +60,13 @@ import FPath.Parseable         ( parse )
 import FPath.RelDir            ( RelDir, reldir )
 import FPath.RelFile           ( RelFile, relfile )
 
--- lens --------------------------------
-
-import Control.Lens.Review   ( (#) )
-
 -- monaderror-io -----------------------
 
-import MonadError           ( ѥ )
-import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError, (~~) )
+import MonadError.IO.Error  ( (~~) )
 
--- more-unicode ------------------------
+-- safe --------------------------------
 
-import Data.MoreUnicode.Functor  ( (⊳), (⩺) )
-import Data.MoreUnicode.Lens     ( (⊣) )
-import Data.MoreUnicode.Monad    ( (≫), (⪼) )
-import Data.MoreUnicode.Natural  ( ℕ )
-import Data.MoreUnicode.Text     ( 𝕋 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( ExceptT, MonadError, throwError )
-
--- tasty -------------------------------
-
-import Test.Tasty  ( TestTree, testGroup )
-
--- tasty-hunit -------------------------
-
-import Test.Tasty.HUnit  ( (@=?), testCase )
-
--- tasty-plus --------------------------
-
-import TastyPlus  ( runTestsP, runTestsReplay, runTestTree )
+import Safe  ( headNote )
 
 -- temporary ---------------------------
 
@@ -202,10 +158,11 @@ resolve d =
   let -- prepend `d`, note this is a no-op for input abs functions
       prepend ∷ FilePath → FilePath
       prepend = (filepath # d </>)
+      fex = fmap (FExists ≡) ∘ fexists ∘ fst
       -- Given an AbsDir, `resolve` must resolve to *something* valid, since the
       -- top of an AbsDir is the root dir, and that always exists.
-      fex = fmap (FExists ≡) ∘ fexists ∘ fst
-   in head ⩺ filterM fex ∘ reverse ∘ splitPoints ∘ prepend
+   in headNote "MonadIO.FPath.resolve should never fail" ⩺
+        filterM fex ∘ reverse ∘ splitPoints ∘ prepend
 
 ------------------------------------------------------------
 

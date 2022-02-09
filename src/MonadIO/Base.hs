@@ -6,53 +6,24 @@ module MonadIO.Base
   ( chmod, getArgs, hClose, unlink )
 where
 
+import Base1T
+
 -- base --------------------------------
 
 import qualified System.Environment
 import qualified System.IO
 
-import Control.Monad.IO.Class  ( MonadIO )
-import Data.Function           ( ($) )
-import GHC.Stack               ( HasCallStack )
-import System.IO               ( Handle )
-import System.Posix.Types      ( FileMode )
-
--- base-unicode-symbols ----------------
-
-import Data.Function.Unicode  ( (∘) )
+import System.IO           ( Handle )
+import System.Posix.Types  ( FileMode )
 
 -- fpath -------------------------------
 
 import FPath.AsFilePath  ( AsFilePath, filepath )
 import FPath.File        ( FileAs( _File_ ) )
 
--- lens --------------------------------
-
-import Control.Lens.Review  ( review )
-
--- monaderror-io -----------------------
-
-import MonadError.IO        ( asIOError )
-import MonadError.IO.Error  ( AsIOError )
-
--- more-unicode ------------------------
-
-import Data.MoreUnicode.Lens    ( (⫥) )
-import Data.MoreUnicode.String  ( 𝕊 )
-
--- mtl ---------------------------------
-
-import Control.Monad.Except  ( MonadError )
-
 -- unix --------------------------------
 
 import System.Posix.Files  ( removeLink, setFileMode )
-
-------------------------------------------------------------
---                     local imports                      --
-------------------------------------------------------------
-
-import MonadIO  ( liftIO )
 
 --------------------------------------------------------------------------------
 
