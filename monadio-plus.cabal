@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.0.8.0
+version:             2.0.9.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -113,7 +113,8 @@ library
                      , exited          >= 1.0.4.0
                      , fpath           >= 1.2.0.0
                      , fstat           >= 1.0.1.0
-                     , monaderror-io   >= 1.2.1.0
+                     , monaderror-io   >= 1.2.2.0
+                     , natural         >= 0.0.1.0
                      , tasty-plus      >= 1.5.1.0
 
   -- Directories containing source files.

@@ -1,3 +1,8 @@
+2.0.9.0 2022-02-28
+==================
+- add MonadIO.Temp.testsWithTempfiles'
+- MonadIO.Temp.testsWithTempfiles now takes a test name
+
 2.0.8.0 2022-02-08
 ==================
 - add MonadIO.Temp.testsWithTempfiles

@@ -60,6 +60,7 @@ import FPath.PathComponent     ( PathComponent )
 
 import Control.Lens.At         ( ix )
 import Control.Lens.Each       ( Each, each )
+import Control.Lens.Fold       ( mapMOf_ )
 import Control.Lens.Traversal  ( mapMOf )
 import Control.Lens.Tuple      ( _1, _2, _3 )
 
@@ -72,6 +73,10 @@ import MonadError.IO.Error  ( IOError )
 
 import Control.Monad.State   ( MonadState, modify, runStateT )
 import Control.Monad.Trans   ( lift )
+
+-- natural -----------------------------
+
+import Natural  ( length )
 
 -- tasty-hunit -------------------------
 
@@ -407,7 +412,8 @@ withTempDirCD' io = withTempDir (\ d → inDir d $ io d)
     text contents -}
 testsWithTempfile ∷ 𝕋 → [(TestName, AbsFile → Assertion)] → TestTree
 testsWithTempfile txt tsts =
-  testsWithTempfiles (Identity txt) (second (∘ runIdentity) ⊳ tsts)
+  testsWithTempfiles "testsWithTempfile"
+                     (Identity txt) (second (∘ runIdentity) ⊳ tsts)
 
 ----------
 
@@ -424,31 +430,198 @@ testsWithTempfileTests =
 
 ----------------------------------------
 
+-- This exists purely for development; it should be a strict specialization
+-- of testsWithTempfiles', using [] & AbsFile rather than Each & FileAs; to
+-- enable us to work against a concrete, comprehensible type signature (and use
+-- the hints that the compiler may give us).
+_testsWithTempfiles ∷ ∀ τ δ . (OutputData τ) ⇒
+                      TestName
+                    → [τ]
+                    -- other IO, whose result to pass to the tests
+                    → ([(AbsFile,ℍ)] → IO δ)
+                    -- setup for other IO
+                    → (δ → IO())
+                    -- release for other IO
+                    → (δ → IO())
+                    → [(TestName, [AbsFile] → δ → Assertion)]
+                    → TestTree
+
+_testsWithTempfiles name
+                    txts
+                    acquire
+                    setup
+                    release tsts =
+  let f_fsts          ∷ ([AbsFile]→ δ→ Assertion)→ ([(AbsFile,ℍ)],δ) → Assertion
+      f_fsts f (xs,z) = f (xs & each ⊧ fst) z
+      hclose          = ӝ ∘ hClose @IOError
+      rm              = ӝ ∘ unlink @IOError
+      tempFile        = tempfile @FPathIOError
+      tsts'           ∷ IO ([(AbsFile,ℍ)],δ) → TestTree
+      tsts' io_fs_x   = ioTests name (fmap (second f_fsts) tsts) io_fs_x
+      acquire'        = do
+        fs ← ӝ $ mapMOf each tempFile txts
+        x  ← acquire fs
+        return (fs,x)
+      setup' (fs,x)   = do
+        mapMOf_ each (hclose ∘ snd) fs
+        setup x
+      release' (fs,x) = do
+        mapMOf_ each (rm ∘ fst) fs
+        release x
+  in withResourceCleanup acquire' setup' release' tsts'
+
+
+----------------------------------------
+
+{- | Perform tests using a number of testfiles, which are created as tempfiles
+     with the given contents.  Also, take some arbitrary IO, with acquire, setup
+     and release functions (see `ioTests`); pass the result of that IO also
+     to the tests.
+
+     Note that when the acquire is run for the arbitrary IO; the tempfiles
+     have been created and written, but their filehandles not closed; the
+     filehandles are closed before the setup is called for the arbitrary IO.
+
+     This type signature roughly equates to
+
+     > (OutputData τ, FileAs β) ⇒
+     > TestName → φ τ → IO δ → (δ → IO()) → (δ → IO())
+     >          → [(TestName, (φ β,δ) → Assertion)] → TestTree
+
+     Where φ is a traversable collection; e.g., @[τ]@ or @(τ,τ,τ)@.
+     Note that to use a single tempfile, you need an instance of @Each@ that has
+     a single data member - e.g., @Identity@.
+-}
+-- Each s t a b; s is a container for a, t is a container for b
+-- s -> a, t -> b, s b -> t, t a -> s
+-- a is the input type, b is the output type, s, t are the input/output
+-- containers respectively.
+
+testsWithTempfiles' ∷ ∀ τ γ δ
+                        σ -- container for τ; same container as used for
+                          -- (γ,ℍ) when passed around, and passed to the tests
+                        ξ -- container for (γ, ℍ); same container as used
+                          -- for input file contents, and passed to
+                          -- the tests
+                        β -- the container of the type passed to each test;
+                          -- roughly ([γ],δ) or ((γ,γ,γ),δ), etc.
+                        .
+                      (OutputData τ, -- type of tempfile contents, e.g., 𝕋
+                       FileAs γ, -- fileish thing to create, e.g., AbsFile
+                       Each σ ξ τ (γ,ℍ), ReturnFNFH (γ,ℍ),
+                       Each ξ β (γ,ℍ) γ, Each ξ ξ (γ,ℍ) (γ,ℍ)
+                      ) ⇒
+                      TestName
+                    → σ          {- ^ collection of texts, or similar; contents
+                                      of each temp file -}
+                    → (ξ → IO δ) {- ^ other IO, whose result to pass to the
+                                      tests -}
+                    → (δ → IO()) {- ^ setup for other IO -}
+                    → (δ → IO()) {- ^ release for other IO -}
+--                    → [(TestName, (β,δ) → Assertion)]
+                    → [(TestName, β → δ → Assertion)]
+                    → TestTree
+
+testsWithTempfiles' name txts acquire setup release tsts =
+  let -- take a function from ([file],extra_io_out) to assertion and produce a
+      -- function from ([(file,handle)],extra_io_out) to assertion
+
+      -- roughly; f_fst ∷ ([x] → y → z) → ([(x,_)],y) → z
+      f_fsts f (xs,z) = f (xs & each ⊧ fst) z
+      hclose        = ӝ ∘ hClose @IOError
+      rm            = ӝ ∘ unlink @IOError
+      tempFile      = tempfile @FPathIOError
+      acquire'      = do
+        fs ← ӝ $ mapMOf each tempFile txts
+        x  ← acquire fs
+        return (fs,x)
+      setup' (fs,x)   = do
+        mapMOf_ each (hclose ∘ snd) fs
+        setup x
+      release' (fs,x) = do
+        mapMOf_ each (rm ∘ fst) fs
+        release x
+      -- map f_fsts to the test fn part of `[(TestName, β → δ → Assertion)]`
+      -- something like
+      -- tsts' ∷ IO (β,δ) → TestTree
+      tsts' io_fs_x = ioTests name (fmap (second f_fsts) tsts) io_fs_x
+  in withResourceCleanup acquire' setup' release' tsts'
+
+--------------------
+
+class Len α where
+  len ∷ α → ℕ
+instance Len (Identity β) where
+  len _ = 1
+instance Len (β,β') where
+  len _ = 2
+instance Len (β,β',β'') where
+  len _ = 3
+instance Len [β] where
+  len = length
+
+testsWithTempfiles'Tests ∷ TestTree
+testsWithTempfiles'Tests =
+  let foo = "foo" ∷ 𝕋
+      bar = "bar" ∷ 𝕋
+      baz = "baz" ∷ 𝕋
+
+      doTest name txts exps n =
+        let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
+         in testsWithTempfiles' name txts (\ fs → return (len fs))
+                                (const $ return ()) (const $ return ())
+                                [ (unpack t,(\ x y → do
+                                                t' ← readfile (x⊣f)
+                                                t ≟ t'
+                                                n @=? y
+                                            ))
+                                | (t,f) ← exps]
+      doTest' name txts exps n =
+        let readfile ∷ 𝕄 AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError ∘ fromJust
+         in testsWithTempfiles' name txts (\ fs → return (len fs))
+                                (const $ return ()) (const $ return ())
+                                [ (unpack t,(\ x y → do
+                                                t' ← readfile (x⩼f)
+                                                t' ≟ t
+                                                n @=? y
+                                            ))
+                                | (t,f) ← exps]
+  in testGroup "testsWithTempfiles'"
+               [ doTest "foo" (Identity foo) [(foo,_1)] 1
+               , doTest "foo,bar" (foo,bar) [(foo,_1),(bar,_2)] 2
+               , doTest "foo,bar,baz" (foo,bar,baz)
+                                      [(foo,_1),(bar,_2),(baz,_3)] 3
+               , doTest' "list" [foo,bar,baz]
+                                [(foo,ix 0),(bar,ix 1),(baz,ix 2)] 3
+               ]
+
+----------------------------------------
+
 {- | Perform tests using a number of testfiles, which are created as tempfiles
      with the given contents.
 
-     This complex type signature roughly equates to
+     This type signature roughly equates to
 
      > (OutputData τ, FileAs β) ⇒ φ τ → [(TestName, φ β → Assertion)] → TestTree
 
      Where φ is a traversable collection; e.g., @[τ]@ or @(τ,τ,τ)@.
      Note that to use a single tempfile, you need an instance of @Each@ that has
      a single data member - e.g., @Identity@.
--}
-testsWithTempfiles ∷ ∀ τ β σ ξ α γ .
-                     (OutputData τ, FileAs β, Each σ ξ τ (AbsFile, ℍ),
-                      Each ξ α (β, Handle) (), Each ξ γ (β, Handle) β) ⇒
-                     σ → [(TestName, γ → Assertion)] → TestTree
 
-testsWithTempfiles txts tsts =
-  let yy f xs = f $ xs & each ⊧ fst
-      hclose  = ӝ ∘ hClose @IOError
-      rm      = ӝ ∘ unlink @IOError
-      tempFile = tempfile @FPathIOError @_ @(AbsFile,ℍ)
-   in withResourceCleanup (ӝ $ mapMOf each tempFile txts)
-                          ((\ xs → mapMOf each (hclose ∘ snd) xs ⪼ return()))
-                          ((\ xs → mapMOf each (rm     ∘ fst) xs ⪼ return()))
-                          ((\ x → ioTests "" (fmap (second yy) tsts) x))
+     This is `testsWithTempfiles'`; but with the arbitrary IO elided.
+-}
+
+testsWithTempfiles ∷ ∀ τ β σ ξ γ .
+                     (OutputData τ, FileAs γ, ReturnFNFH (γ,ℍ),
+                      Each σ ξ τ (γ, ℍ),
+                      Each ξ β (γ,ℍ) γ, Each ξ ξ (γ, ℍ) (γ,ℍ)) ⇒
+                     TestName → σ → [(TestName, β → Assertion)] → TestTree
+
+
+testsWithTempfiles nm fs ts =
+  let nowt = const $ return ()
+   in testsWithTempfiles' nm fs nowt nowt nowt
+                          (fmap (second (\ f → \ b () → f b)) ts)
 
 ----------
 
@@ -458,26 +631,28 @@ testsWithTempfilesTests =
       bar = "bar" ∷ 𝕋
       baz = "baz" ∷ 𝕋
 
-      doTest txts exps =
+      doTest name txts exps =
         let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
-         in testsWithTempfiles txts
+         in testsWithTempfiles name txts
                                [ (unpack t,(\ x→ readfile (x⊣f) ≫ (≟ t)))
                                | (t,f) ← exps]
-      doTest' txts exps =
+      doTest' name txts exps =
         let readfile ∷ 𝕄 AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError ∘ fromJust
-         in testsWithTempfiles txts [ (unpack t,(\x→(readfile (x⩼f)) ≫ (≟ t)))
-                                    | (t,f) ← exps]
+         in testsWithTempfiles name txts
+                               [ (unpack t,(\ x→(readfile (x⩼f)) ≫ (≟ t)))
+                               | (t,f) ← exps]
   in testGroup "testsWithTempfiles"
-               [ doTest (Identity foo) [(foo,_1)]
-               , doTest (foo,bar) [(foo,_1),(bar,_2)]
-               , doTest (foo,bar,baz) [(foo,_1),(bar,_2),(baz,_3)]
-               , doTest' [foo,bar,baz] [(foo,ix 0),(bar,ix 1),(baz,ix 2)]
+               [ doTest "foo" (Identity foo) [(foo,_1)]
+               , doTest "foo,bar" (foo,bar) [(foo,_1),(bar,_2)]
+               , doTest "foo,bar,baz" (foo,bar,baz) [(foo,_1),(bar,_2),(baz,_3)]
+               , doTest' "list" [foo,bar,baz] [(foo,ix 0),(bar,ix 1),(baz,ix 2)]
                ]
 
 -- tests -----------------------------------------------------------------------
 
 tests ∷ TestTree
-tests = testGroup "Temp" [ testsWithTempfileTests, testsWithTempfilesTests ]
+tests = testGroup "Temp" [ testsWithTempfileTests, testsWithTempfilesTests
+                         , testsWithTempfiles'Tests ]
 
 ----------------------------------------
 
