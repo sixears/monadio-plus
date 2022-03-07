@@ -60,7 +60,8 @@ mIsDir ∷ 𝕄 FStat → 𝔹
 mIsDir (fmap ftype → 𝕵 Directory) = 𝕿
 mIsDir _                          = 𝕱
 
-fexists_ ∷ (Monad η, AsFilePath ρ) ⇒ 𝔹 → (ρ → η (𝕄 FStat)) → ρ → η FExists
+fexists_ ∷ ∀ ρ η . (Monad η, AsFilePath ρ) ⇒
+           𝔹 → (ρ → η (𝕄 FStat)) → ρ → η FExists
 fexists_ checkDir g f = bool NoFExists FExists ⊳ do
   s ← g f
   if checkDir ∧ '/' ≡ lastDef '\0' (f ⫥ filepath)
@@ -74,12 +75,13 @@ fexists_ checkDir g f = bool NoFExists FExists ⊳ do
      Symlinks are dereferenced; so dangling symlinks are considered to not
      exist.
  -}
-fexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒ τ → μ FExists
+fexists ∷ ∀ ε τ μ .
+          (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒ τ → μ FExists
 fexists = fexists_ 𝕿 stat
 
 {- | Like `fexists`; but for symlinks, checks the symlink rather than
      dereferencing; so dangling symlinks are considered to exist. -}
-lfexists ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
+lfexists ∷ ∀ ε τ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
            τ → μ FExists
 lfexists = fexists_ 𝕿 lstat
 
@@ -108,10 +110,11 @@ fexistsTests =
      directory will return `FExists`; but at a cost of being arguably less
      accurate.
  -}
-fexists' ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ)⇒ τ → μ FExists
+fexists' ∷ ∀ ε τ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
+           τ → μ FExists
 fexists' = fexists_ 𝕱 stat
 
-lfexists' ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
+lfexists' ∷ ∀ ε τ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
             τ → μ FExists
 lfexists' = fexists_ 𝕱 lstat
 

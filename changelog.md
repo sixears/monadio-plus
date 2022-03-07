@@ -1,3 +1,7 @@
+2.0.10.0 2022-03-06
+===================
+- add explicit quantification ordering to MonadIO.FStat
+
 2.0.9.0 2022-02-28
 ==================
 - add MonadIO.Temp.testsWithTempfiles'
