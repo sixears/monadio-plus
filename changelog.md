@@ -1,3 +1,19 @@
+2.3.0.1 2022-04-07
+==================
+- Upgrade dependencies
+
+2.3.0.0 2022-04-06
+==================
+- Remove io argument from Process.system(x); factor out procWait
+
+2.2.0.0 2022-04-05
+==================
+- Process.system(x) now take an io argument for, e.g., logging actions
+
+2.1.0.0 2022-04-03
+==================
+- process functions (system*, doProc) now return ExitInfo (including pid)
+
 2.0.10.0 2022-03-06
 ===================
 - add explicit quantification ordering to MonadIO.FStat

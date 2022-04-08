@@ -1,7 +1,7 @@
 module MonadIO.Process.ExitStatus
   ( ExitStatus(..), HasExitStatus(..), HasStdErrT(..), HasStdOutT(..)
   , evOK, evAbnormal, evHelp, evExecFail
-  , exitOkay, throwNotOkay
+  , exitOkay, exitWasSignalled, throwNotOkay
   )
 where
 
@@ -66,6 +66,10 @@ evHelp = ExitVal 2
 
 evExecFail ∷ ExitStatus
 evExecFail = ExitVal 254
+
+exitWasSignalled ∷ ExitStatus → 𝔹
+exitWasSignalled (ExitSig _) = 𝕿
+exitWasSignalled _           = 𝕱
 
 instance Printable ExitStatus where
   print (ExitVal ev) = P.text $ [fmt|Execution exit %d|] ev

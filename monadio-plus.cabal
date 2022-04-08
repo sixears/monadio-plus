@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.0.10.0
+version:             2.3.0.1
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -60,10 +60,12 @@ library
                      , MonadIO.OpenFile
                      , MonadIO.Process
                      , MonadIO.Process.CmdSpec
+                     , MonadIO.Process.ExitInfo
                      , MonadIO.Process.ExitStatus
                      , MonadIO.Process.MakeProc
                      , MonadIO.Process.MkInputStream
                      , MonadIO.Process.OutputHandles
+                     , MonadIO.Process.Pid
                      , MonadIO.Process.Signal
                      , MonadIO.Process.ToMaybeTexts
                      , MonadIO.Tasty
@@ -107,12 +109,12 @@ library
                      , filepath, lens, mtl, process, safe, tasty-hunit
                      , temporary, text, text-printer, unix
 
-                     , base1t          >= 0.0.3.0
-                     , containers-plus >= 0.0.10.0
-                     , env-plus        >= 1.0.3.0
+                     , base1t          >= 0.0.4.0
+                     , containers-plus >= 0.0.10.1
+                     , env-plus        >= 1.0.6.1
                      , exited          >= 1.0.4.0
-                     , fpath           >= 1.2.0.0
-                     , fstat           >= 1.0.1.0
+                     , fpath           >= 1.2.0.1
+                     , fstat           >= 1.0.1.1
                      , monaderror-io   >= 1.2.2.0
                      , natural         >= 0.0.1.0
                      , tasty-plus      >= 1.5.1.0

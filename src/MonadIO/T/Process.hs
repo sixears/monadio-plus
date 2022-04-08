@@ -51,6 +51,7 @@ import MonadIO.File                   ( devnull )
 import MonadIO.Process                ( system )
 import MonadIO.Process.CmdSpec        ( CmdArgs( CmdArgs ), CmdExe( CmdExe )
                                       , cmdArgs, cmdExe, expExitVal, mkCmd )
+import MonadIO.Process.ExitInfo       ( ExitInfo )
 import MonadIO.Process.ExitStatus     ( ExitStatus( ExitVal ), exitVal )
 import MonadIO.Process.MkInputStream  ( MkInputStream )
 
@@ -63,31 +64,31 @@ foo = unlines [ "jimmy 7"
               ]
 
 grep_ ∷ (MonadIO μ, MkInputStream σ, MonadError ProcError μ) ⇒
-        [𝕋] → σ → μ (ExitStatus, (𝕋,𝕋))
+        [𝕋] → σ → μ (ExitInfo, (𝕋,𝕋))
 grep_ args input =
   let cmd = mkCmd Paths.grep args & expExitVal ⨭ 1
    in system input cmd
 
 grep ∷ (MonadIO μ, MkInputStream σ, MonadError ProcError μ) ⇒
-       𝕋 → σ → μ (ExitStatus, (𝕋,𝕋))
+       𝕋 → σ → μ (ExitInfo, (𝕋,𝕋))
 grep pat input = grep_ [pat] input
 
 {- | Like `grep`, but passes in an `AbsFile` rather than piping in the data. -}
 grepaf ∷ (MonadIO μ, MonadError ProcError μ) ⇒
-         𝕋 → AbsFile → μ (ExitStatus, (𝕋,𝕋))
+         𝕋 → AbsFile → μ (ExitInfo, (𝕋,𝕋))
 grepaf pat fn = devnull ≫ grep_ [pat, toText fn] -- [absfile|/dev/null|]
 
 -- for repl use
 
 {- | grep a pattern from some `Text`; capture the logs (for debugging). -}
 _grep_ ∷ (MonadIO μ, MkInputStream σ) ⇒
-        𝕋 → σ → μ (𝔼 ProcError (ExitStatus, (𝕋,𝕋)))
+        𝕋 → σ → μ (𝔼 ProcError (ExitInfo, (𝕋,𝕋)))
 _grep_ pat input = ѥ $ grep pat input
 
 {- | grep a pattern from some `Text`; write the logs to stderr (for
      debugging). -}
 _grep ∷ (MonadIO μ, MonadMask μ, MkInputStream σ) ⇒
-        𝕋 → σ → μ (𝔼 ProcError (ExitStatus, (𝕋,𝕋)))
+        𝕋 → σ → μ (𝔼 ProcError (ExitInfo, (𝕋,𝕋)))
 _grep pat input = ѥ $ grep_ [pat] input
 
 {- | Perform a list of tests independently against the result of an IO.
@@ -100,12 +101,12 @@ ioTests nm s xs =
 
 ----------------------------------------
 
-data ProcResult = ProcResult { exit ∷ ExitStatus
+data ProcResult = ProcResult { exit ∷ ExitInfo
                              , out  ∷ 𝕋
                              , err  ∷ 𝕋
                              }
 
-mkProcResult ∷ ((ExitStatus, (𝕋,𝕋))) → ProcResult
+mkProcResult ∷ ((ExitInfo, (𝕋,𝕋))) → ProcResult
 mkProcResult (ex,(ot,er)) = ProcResult ex ot er
 
 {- | Test the results of an external process.  Note that the proc is run
@@ -117,7 +118,7 @@ testProc ∷ TestName
          → 𝕋                                    -- ^ expected stderr
          → TestTree
 testProc nm s expExit expOut expErr =
-  ioTests nm s $ [ ("exit",   (\ r → ExitVal expExit ≟ exit r))
+  ioTests nm s $ [ ("exit",   (\ r → ExitVal expExit ≟ exit r ⊣ exitVal))
                  , ("stdout", (\ r → expOut  ≟ out r))
                  , ("stderr", (\ r → expErr  ≟ err r))
                  ]

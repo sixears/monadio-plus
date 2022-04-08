@@ -26,11 +26,13 @@ import MonadIO.Process.CmdSpec     ( CmdSpec, HasCmdArgs( cmdArgs )
                                    , HasCmdSpec( cmdSpec )
                                    )
 import MonadIO.Process.ExitStatus  ( ExitStatus, HasExitStatus( exitVal ) )
+import MonadIO.Process.Pid         ( Pid )
 
 --------------------------------------------------------------------------------
 
 {-| Process exited with a signal or unexpected exit value. -}
 data ProcExitError = ProcExitError { _cmdspec   ∷ CmdSpec
+                                   , _pid       ∷ Pid
                                    , _exStat    ∷ ExitStatus
                                    , _stdout    ∷ 𝕄 𝕋
                                    , _stderr    ∷ 𝕄 𝕋
@@ -39,27 +41,28 @@ data ProcExitError = ProcExitError { _cmdspec   ∷ CmdSpec
   deriving (Generic,NFData,Show)
 
 instance Eq ProcExitError where
-  ProcExitError cp1 es1 so1 se1 _ == ProcExitError cp2 es2 so2 se2 _ =
-    (cp1,es1,so1,se1) == (cp2,es2,so2,se2)
+  ProcExitError cp1 pd1 es1 so1 se1 _ == ProcExitError cp2 pd2 es2 so2 se2 _ =
+    (cp1,pd1,es1,so1,se1) == (cp2,pd2,es2,so2,se2)
 
 instance HasCallstack ProcExitError where
   callstack = lens _callstack
-                   (\ (ProcExitError cp es so se _) cs →
-                      ProcExitError cp es so se cs)
+                   (\ (ProcExitError cp pd es so se _) cs →
+                      ProcExitError cp pd es so se cs)
 
 instance Printable ProcExitError where
-  print (ProcExitError cs es (𝕵 so) (𝕵 se) _) =
-    P.text $ [fmt|PROCESS FAILED: CMD> %T\nEXIT: %T\nSTDOUT: %T\nSTDERR: %T|]
-             cs es so se
-  print (ProcExitError cs es (𝕵 so) 𝕹 _) =
-    P.text $ [fmt|PROCESS FAILED: CMD> %T\nEXIT: %T\nSTDOUT: %T|]
-             cs es so
-  print (ProcExitError cs es 𝕹 (𝕵 se) _) =
-    P.text $ [fmt|PROCESS FAILED: CMD> %T\nEXIT: %T\nSTDERR: %T|]
-             cs es se
-  print (ProcExitError cs es 𝕹 𝕹 _) =
-    P.text $ [fmt|PROCESS FAILED: CMD> %T\nEXIT: %T|]
-             cs es
+  print (ProcExitError cs pid es (𝕵 so) (𝕵 se) _) =
+    P.text $
+      [fmt|PROCESS FAILED: CMD>  %T «%w»\nEXIT: %T\nSTDOUT: %T\nSTDERR: %T|]
+        cs pid es so se
+  print (ProcExitError cs pid es (𝕵 so) 𝕹 _) =
+    P.text $ [fmt|PROCESS FAILED: CMD>  %T «%w»\nEXIT: %T\nSTDOUT: %T|]
+             cs pid es so
+  print (ProcExitError cs pid es 𝕹 (𝕵 se) _) =
+    P.text $ [fmt|PROCESS FAILED: CMD>  %T «%w»\nEXIT: %T\nSTDERR: %T|]
+             cs pid es se
+  print (ProcExitError cs pid es 𝕹 𝕹 _) =
+    P.text $ [fmt|PROCESS FAILED: CMD> %T «%w»\nEXIT: %T|]
+             cs pid es
 
 --------------------
 
@@ -84,9 +87,9 @@ instance HasCmdSpec ProcExitError where
 ----------------------------------------
 
 procExitError ∷ HasCallStack ⇒
-                CmdSpec → ExitStatus → (𝕄 𝕋, 𝕄 𝕋) → ProcExitError
-procExitError cspec exit (stdo,stde) =
-  ProcExitError cspec exit stdo stde callStack
+                CmdSpec → Pid → ExitStatus → (𝕄 𝕋, 𝕄 𝕋) → ProcExitError
+procExitError cspec pid exit (stdo,stde) =
+  ProcExitError cspec pid exit stdo stde callStack
 
 ----------------------------------------
 
@@ -107,8 +110,8 @@ instance AsProcExitError ProcExitError where
   _ProcExitError = id
 
 asProcExitError ∷ (AsProcExitError ε, HasCallStack) ⇒
-                  CmdSpec → ExitStatus → (𝕄 𝕋, 𝕄 𝕋) → ε
-asProcExitError cspec exit stdoe =
-  _ProcExitError # procExitError cspec exit stdoe
+                  CmdSpec → Pid → ExitStatus → (𝕄 𝕋, 𝕄 𝕋) → ε
+asProcExitError cspec pid exit stdoe =
+  _ProcExitError # procExitError cspec pid exit stdoe
 
 -- that's all, folks! ----------------------------------------------------------
