@@ -1,5 +1,6 @@
 module MonadIO.Process
- ( doProc, procWait, system, systemx, systemN, systemS, throwSig, throwSig' )
+ ( doProc, getPid, getPid', procWait, system, systemx, systemN, systemS
+ , throwSig, throwSig' )
 where
 
 import Base1T  hiding  ( (∉) )
@@ -23,7 +24,8 @@ import MonadError.IO  ( ioThrow )
 
 -- process -----------------------------
 
-import System.Process  ( ProcessHandle, getPid, waitForProcess )
+import qualified  System.Process
+import System.Process  ( ProcessHandle, waitForProcess )
 
 ------------------------------------------------------------
 --                     local imports                      --
@@ -46,10 +48,28 @@ import MonadIO.Process.ToMaybeTexts   ( ToMaybeTexts( toMaybeTexts ) )
 
 --------------------------------------------------------------------------------
 
+{- | Convert an `ExitCode` from `System.IO` to our `ExitStatus`. -}
 exitCode ∷ ExitCode → ExitStatus
 exitCode ExitSuccess     = ExitVal 0
 exitCode (ExitFailure i) | i > 0     = ExitVal $ fromIntegral i
                          | otherwise = ExitSig ∘ Signal ∘ fromIntegral $ 256-i
+
+----------------------------------------
+
+{- | Get pid from a `ProcessHandle`.  Returns `𝕹` for a closed `ProcessHandle`.
+ -}
+getPid ∷ MonadIO μ ⇒ ProcessHandle → μ (𝕄 Pid)
+getPid = (fmap Pid) ⩺ liftIO ∘  System.Process.getPid
+
+--------------------
+
+{- | Get pid where we're sure the pid should be available; throws errors (e.g.,
+     for a closed `ProcessHandle` into IO. -}
+getPid' ∷ MonadIO μ ⇒ ProcessHandle → μ Pid
+getPid' h =
+  getPid h ≫ \ case
+    𝕹   → ioThrow ("failed to getPid from handle; already closed" ∷ 𝕋)
+    𝕵 p → return p
 
 ----------------------------------------
 
@@ -92,15 +112,6 @@ systemx ∷ ∀ ε ζ ω σ μ .
 
 systemx inh cspec =
  ѥ (makeProc inh cspec) ≫ procWait cspec
-
-{- | Get pid where we're sure the pid should be available; throws errors into
-     IO.
- -}
-getPid' ∷ MonadIO μ ⇒ ProcessHandle → μ Pid
-getPid' h =
-  liftIO $ getPid h ≫ \ case
-    𝕹   → ioThrow ("failed to getPid from handle; already closed" ∷ 𝕋)
-    𝕵 p → return $ Pid p
 
 -- $ system defCPOpts (""∷ Text) (CmdSpec (CmdExe [absfile|/usr/bin/env|])
 --          (CmdArgs []))

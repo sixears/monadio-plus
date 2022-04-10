@@ -1,3 +1,7 @@
+2.3.1.0 2022-04-09
+==================
+- add MonadIO.Process.getPid{,'}
+
 2.3.0.1 2022-04-07
 ==================
 - Upgrade dependencies
