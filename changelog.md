@@ -1,3 +1,7 @@
+2.3.2.0 2022-04-10
+==================
+- factor out throwExit from MonadIO.Process.system
+
 2.3.1.0 2022-04-09
 ==================
 - add MonadIO.Process.getPid{,'}

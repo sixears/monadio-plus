@@ -1,6 +1,6 @@
 module MonadIO.Process
  ( doProc, getPid, getPid', procWait, system, systemx, systemN, systemS
- , throwSig, throwSig' )
+ , throwExit, throwSig, throwSig' )
 where
 
 import Base1T  hiding  ( (∉) )
@@ -35,15 +35,17 @@ import MonadIO.Error.CreateProcError  ( AsCreateProcError )
 import MonadIO.Error.ProcExitError    ( AsProcExitError, asProcExitError )
 import MonadIO.NamedHandle            ( stdin )
 import MonadIO.OpenFile               ( devnull )
-import MonadIO.Process.CmdSpec        ( CmdSpec, expExit )
+import MonadIO.Process.CmdSpec        ( CmdSpec, HasCmdSpec( cmdSpec ), expExit)
 import MonadIO.Process.ExitInfo       ( ExitInfo, exitInfo )
 import MonadIO.Process.ExitStatus     ( ExitStatus( ExitSig, ExitVal )
-                                      , exitVal, exitWasSignalled )
+                                      , HasExitStatus
+                                      , exitVal, exitWasSignalled
+                                      )
 import MonadIO.Process.MakeProc       ( MakeProc, makeProc )
 import MonadIO.Process.MkInputStream  ( MkInputStream )
 import MonadIO.Process.Signal         ( Signal( Signal ) )
 import MonadIO.Process.OutputHandles  ( OutputHandles( slurp ) )
-import MonadIO.Process.Pid            ( Pid( Pid ), pid )
+import MonadIO.Process.Pid            ( HasPid, Pid( Pid ), pid )
 import MonadIO.Process.ToMaybeTexts   ( ToMaybeTexts( toMaybeTexts ) )
 
 --------------------------------------------------------------------------------
@@ -110,8 +112,7 @@ systemx ∷ ∀ ε ζ ω σ μ .
        → CmdSpec -- ^ cmd + args
        → μ (ExitInfo, ω)
 
-systemx inh cspec =
- ѥ (makeProc inh cspec) ≫ procWait cspec
+systemx inh cspec = ѥ (makeProc inh cspec) ≫ procWait cspec
 
 -- $ system defCPOpts (""∷ Text) (CmdSpec (CmdExe [absfile|/usr/bin/env|])
 --          (CmdArgs []))
@@ -123,8 +124,21 @@ systemx inh cspec =
 
 ----------------------------------------
 
+{-| Check if an exit value is an expected value; throw if not. -}
+throwExit ∷ ∀ ε α β η . (HasExitStatus α, HasPid α, HasCmdSpec α,
+                         ToMaybeTexts β, AsProcExitError ε, MonadError ε η) ⇒
+            (α,β) → η (α,β)
+throwExit (einfo,w) =
+  let cspec = einfo ⊣ cmdSpec
+   in if (einfo ⊣ exitVal) ∉ (cspec ⊣ expExit)
+      then let x = einfo ⊣ exitVal
+            in throwError $ asProcExitError cspec (einfo ⊣ pid) x (toMaybeTexts w)
+      else return (einfo,w)
+
+----------------------------------------
+
 {- | Like `systemx`, but throws an `AsProcExitError` if the process exits with
-     an unexpected value/signal (see `CmdSpec`), -}
+     an unexpected value/signal (see `CmdSpec`). -}
 
 system ∷ ∀ ε ζ ω σ μ .
          (MonadIO μ, MkInputStream σ, ToMaybeTexts ω,
@@ -135,13 +149,7 @@ system ∷ ∀ ε ζ ω σ μ .
        → CmdSpec -- ^ cmd + args
        → μ (ExitInfo, ω)
 
-system inh cspec = do
-  (einfo,w) ← systemx inh cspec
-
-  if (einfo ⊣ exitVal) ∉ (cspec ⊣ expExit)
-  then let x = einfo ⊣ exitVal
-        in throwError $ asProcExitError cspec (einfo ⊣ pid) x (toMaybeTexts w)
-  else return (einfo,w)
+system inh cspec = systemx inh cspec ≫ throwExit
 
 --------------------
 
@@ -170,26 +178,24 @@ systemS c = system stdin c
 {- | Given an exit status (and possibly, stdout, stderr, etc); throw iff the
      exit status is of a signal received. -}
 
-throwSig ∷ ∀ ε β η . (AsProcExitError ε, MonadError ε η) ⇒
-           CmdSpec → Pid → (ExitInfo, β) → η (ExitInfo, β)
+throwSig ∷ ∀ ε α β η . (HasExitStatus α, HasPid α, HasCmdSpec α,
+                        AsProcExitError ε, MonadError ε η) ⇒
+           (α, β) → η (α, β)
 
-{-
-throwSig cspec pd (view exitVal → ex@(ExitSig _),_)=
-  throwError $ asProcExitError cspec pd ex (𝕹,𝕹)
-throwSig _     _   (exstat@(view exitVal → ExitVal _), w) = return (exstat,w)
--}
-
-throwSig cspec pd (exstat, w) =
-  let exVal = exstat ⊣ exitVal
+throwSig (einfo, w) =
+  let exVal = einfo ⊣ exitVal
+      cspec = einfo ⊣ cmdSpec
+      p     = einfo ⊣ pid
    in if exitWasSignalled exVal
-      then throwError $ asProcExitError cspec pd exVal (𝕹,𝕹)
-      else return (exstat,w)
+      then throwError $ asProcExitError cspec p exVal (𝕹,𝕹)
+      else return (einfo,w)
 
 ----------
 
-throwSig' ∷ ∀ ε β η . (AsProcExitError ε, MonadError ε η) ⇒
-            CmdSpec → Pid → 𝔼 ε (ExitInfo, β) → η (ExitInfo, β)
-throwSig' cspec pd = fromRight ∘ join ∘ fmap (throwSig cspec pd)
+throwSig' ∷ ∀ ε α β η . (HasExitStatus α, HasPid α, HasCmdSpec α,
+                         AsProcExitError ε, MonadError ε η) ⇒
+            𝔼 ε (α, β) → η (α, β)
+throwSig' = fromRight ∘ join ∘ fmap throwSig
 
 ----------------------------------------
 
@@ -207,6 +213,6 @@ doProc ∷ ∀ ε ζ ω σ μ .
 doProc finally input cspec = do
   result ← systemx input cspec
   finally
-  throwSig' cspec (result ⊣ _1 ∘ pid) (𝕽 result)
+  return result -- XXX throwSig' (𝕽 result)
 
 -- that's all, folks! ----------------------------------------------------------
