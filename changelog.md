@@ -1,3 +1,9 @@
+2.4.0.0 2022-05-09
+==================
+- readlink & resolvelink now take an AbsFile as input.
+- add resolvelink'
+- resolvelink now properly returns dir/file as appropriate
+
 2.3.2.0 2022-04-10
 ==================
 - factor out throwExit from MonadIO.Process.system

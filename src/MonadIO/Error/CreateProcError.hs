@@ -109,7 +109,7 @@ data ProcError = PE_PEX_ERROR        ProcErrorX
 
 _PE_PEX_ERROR ∷ Prism' ProcError ProcErrorX
 _PE_PEX_ERROR = prism' (\ e → PE_PEX_ERROR e)
-                            (\ case PE_PEX_ERROR e → 𝕵 e; _ → 𝕹)
+                       (\ case PE_PEX_ERROR e → 𝕵 e; _ → 𝕹)
 
 _PE_PROC_EXIT_ERROR ∷ Prism' ProcError ProcExitError
 _PE_PROC_EXIT_ERROR = prism' (\ e → PE_PROC_EXIT_ERROR e)

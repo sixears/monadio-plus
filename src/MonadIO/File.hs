@@ -23,7 +23,7 @@ module MonadIO.File
 
   , chmod, unlink, rename
 
-  , readlink, resolvelink
+  , readlink, resolvelink, resolvelink'
 
   , fileWritable, isWritableFile, isWritableDir
 
@@ -48,7 +48,8 @@ import System.IO  ( FilePath, Handle, IOMode( AppendMode, ReadMode
 
 import FPath.Abs               ( Abs( AbsD, AbsF ) )
 import FPath.AbsDir            ( AbsDir, absdir, root )
-import FPath.AbsFile           ( absfile )
+import FPath.AbsFile           ( AbsFile, absfile )
+import FPath.AppendableFPath   ( (⫻) )
 import FPath.AsFilePath        ( AsFilePath( filepath ) )
 import FPath.AsFilePath'       ( exterminate )
 import FPath.Dir               ( DirAs )
@@ -57,6 +58,8 @@ import FPath.File              ( FileAs( _File_ ) )
 import FPath.Parent            ( parent )
 import FPath.RelDir            ( reldir )
 import FPath.RelFile           ( RelFile, relfile )
+import FPath.ToDir             ( toDir )
+import FPath.ToFile            ( toFileY )
 
 -- fstat -------------------------------
 
@@ -70,7 +73,7 @@ import qualified System.FilePath.Lens
 
 -- monadio-error -----------------------
 
-import MonadError.IO        ( asIOErrorY )
+import MonadError.IO        ( asIOErrorY, ioThrow )
 import MonadError.IO.Error  ( IOError )
 
 -- mtl ---------------------------------
@@ -280,15 +283,18 @@ fileFoldLinesUTF8 a io fn =
 
 ----------------------------------------
 
--- This has to return an absolute path, as the relative path might include
+-- This has to refturn an absolute path, as the relative path might include
 -- many '..' that can't be represented by FPath.  So we resolve it.
-{- | Read a symlink, return the absolute path to the referent.  Note that as
-     with readlink(2); a directory (any `filepath` ending in a '/'; including
-     those from an `FPath.{Abs,Rel,}Dir` type) will give rise to an EINVAL. -}
-readlink ∷ ∀ ε γ μ .
-           (MonadIO μ, HasCallStack,
-            AsFilePath γ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
-           γ → μ Abs
+{-| Read a symlink, return the absolute path to the referent.
+
+    The referent is returned as-is; that is, it is not checked for existence;
+    a referent with a trailing slash is returned as a dir (whether or not the
+    thing it points to is really a directory, or even exists); likewise, a thing
+    without a trailing slash is returned as a file.
+ -}
+readlink ∷ ∀ ε μ . (MonadIO μ, HasCallStack,
+                    AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+           AbsFile → μ Abs
 readlink (review filepath → fp) = do
   r ← asIOError $ readSymbolicLink fp
   case head r of
@@ -312,19 +318,34 @@ readlink (review filepath → fp) = do
 
 ----------
 
-_readlinkTests ∷ TestName → (𝕊 → IO (Either FPathIOError Abs)) → (α → RelFile)
-               → (α → FilePath) → (α → AbsDir → Abs) → [α] → TestTree
+{-| Run some tests for `readlink`. -}
+_readlinkTests ∷ TestName
+                 {--| function to be tested -}
+               → (AbsFile → IO (Either FPathIOError Abs))
+                 {--| find name of the symlink relative to the tmp dir -}
+               → (α → RelFile)
+                 {--| find the target of the symlink -}
+               → (α → FilePath)
+                 {--| expected result of calling the function under test
+                      (as an abs, possibly at the given tmpdir; the fn is
+                      given a 𝕊 absolute filepath being the tmpdir+"/"+relfile)
+                  -}
+               → (α → AbsDir → Abs)
+                 {--| test cases; as an opaque type whose attributes are
+                    are queried by prior functions -}
+               → [α]
+               → TestTree
 _readlinkTests name f getName getTarget getExp ts =
   let file_setup = ю [ [ TFSDir  [reldir|directory/|] 0o700
                        , TFSFile [relfile|plain|] 0o644 "some text" ]
                      , [ TFSSymL (getName t) (getTarget t) | t ← ts ]
                      ]
-      check ∷ IO AbsDir → 𝕊 → (AbsDir → Abs) → TestTree
-      check d fn exp = let path t = toString t ⊕ "/" ⊕ fn
-                        in testCase fn $ d ≫ \ t →
-                             f (path t) ≫ assertRight (exp t ≟)
+      --- check ∷ IO AbsDir → 𝕊 → (AbsDir → Abs) → TestTree
+      check d fn exp = let -- path t = toString t ⊕ "/" ⊕ fn
+                        in testCase (toString fn) $ d ≫ \ t →
+                             f (t ⫻ fn) ≫ assertRight (exp t ≟)
       -- check' ∷ IO AbsDir → α → TestTree
-      check' d t = check d (getName t ⫥ filepath) (getExp t)
+      check' d t = check d (getName t {- ⫥ filepath -}) (getExp t)
       do_test tmpdir = testGroup name [ check' tmpdir t | t ← ts ]
 
   in testInTempDirFS file_setup (const $ return ()) do_test
@@ -338,22 +359,36 @@ readlinkTests =
 
 --------------------
 
+{-| Like `resolvelink`, but with replaceable readlink & lstat calls; for, e.g.,
+    logging.
+ -}
+resolvelink' ∷ ∀ ε μ . (MonadIO μ, HasCallStack,
+                       AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+              (AbsFile → μ Abs) → (Abs → μ (𝕄 FStat)) → AbsFile → μ Abs
+resolvelink' rdlk lstt fp = do
+  r ← rdlk fp
+  ftype ⊳⊳ lstt r ≫ \ case
+    𝕵 SymbolicLink → case toFileY r of
+                       𝕵 r' → resolvelink r'
+                       -- this should never happen; toFileY only fails
+                       -- / or ./, and neither can ever be a symlink
+                       𝕹 → ioThrow $ [fmtT|eh?: '%T' is a symlink!?|] r
+    𝕵 Directory    → return $ AbsD (toDir r)
+    _              → return r
+
+--------------------
+
 {- | Recursively read a symbolic link, until it is a symbolic link no more.
      Anything other than a (readable) symbolic link is immediately returned
      intact (including non-existent files).  A symbolic link is deferenced, and
      the result re-examined.
  -}
-resolvelink ∷ ∀ ε γ μ .
-            (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-             HasCallStack, AsFilePath γ) ⇒
-            γ → μ Abs
-resolvelink fp = do
-  r ← readlink fp
-  ftype ⊳⊳ lstat r ≫ \ case
-    𝕵 SymbolicLink → resolvelink r
-    _                 → return r
+resolvelink ∷ ∀ ε μ . (MonadIO μ, HasCallStack,
+                       AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+              AbsFile → μ Abs
+resolvelink = resolvelink' readlink lstat
 
-----------
+----------------------------------------
 
 resolvelinkTests ∷ TestTree
 resolvelinkTests = _readlinkTests "resolvelink" (ѥ ∘ resolvelink) slName

@@ -69,7 +69,6 @@ readlinkTestCases =
        , ([relfile|slash|]          , "/"            , absD root)
        , ([relfile|slashes|]        , "///"          , absD root)
        , ([relfile|etc|]            , "/etc/"        , absD [absdir|/etc/|])
-       , ([relfile|etcf|]           , "/etc"         , absF [absfile|/etc|])
        , ([relfile|passwd|]         , "/etc/passwd"  , absF [absfile|/etc/passwd|])
        , ([relfile|passwd-dir|]     , "/etc/passwd/" , absD [absdir|/etc/passwd/|])
        , ([relfile|parent-dangle|]  , "../nonesuch"  , relFp [relfile|nonesuch|])
@@ -84,7 +83,6 @@ readlinkTestCases =
        , ([relfile|this-parent|]    , "./.."         , relDp [reldir|./|])
        , ([relfile|parent-this|]    , "../."         , relDp [reldir|./|])
        , ([relfile|plainfile|]      , "plain"        , relF  [relfile|plain|])
-       , ([relfile|dir|]            , "directory"    , relF  [relfile|directory|])
        , ([relfile|dir-dir|]        , "directory/"   , relD  [reldir|directory/|])
 
        , ([relfile|dr-prnt-dr|] , "dir/../dir/"             , relD [reldir|directory/|])
@@ -117,6 +115,11 @@ readlinkTestCases =
       , ReadlinkTestCase [relfile|dangle-absdir2|] "dangle-absdir"
                          (relF [relfile|dangle-absdir|])
                          (absD [absdir|/nonesuch/|])
+      -- resolvelink should identify these as directories
+      , ReadlinkTestCase [relfile|etcf|] "/etc" (absF [absfile|/etc|])
+                         (absD [absdir|/etc/|])
+      , ReadlinkTestCase [relfile|dir|] "directory" (relF [relfile|directory|])
+                         (relD [reldir|directory/|])
       ]
 
 -- that's all, folks! ----------------------------------------------------------
