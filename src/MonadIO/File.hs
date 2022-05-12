@@ -369,7 +369,7 @@ resolvelink' rdlk lstt fp = do
   r ← rdlk fp
   ftype ⊳⊳ lstt r ≫ \ case
     𝕵 SymbolicLink → case toFileY r of
-                       𝕵 r' → resolvelink r'
+                       𝕵 r' → resolvelink' rdlk lstt r'
                        -- this should never happen; toFileY only fails
                        -- / or ./, and neither can ever be a symlink
                        𝕹 → ioThrow $ [fmtT|eh?: '%T' is a symlink!?|] r

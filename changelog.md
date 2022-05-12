@@ -1,3 +1,7 @@
+2.4.0.1 2022-05-11
+==================
+- fix resolvelink' to call itself, not resolvelink (without the "'") recursively
+
 2.4.0.0 2022-05-09
 ==================
 - readlink & resolvelink now take an AbsFile as input.
