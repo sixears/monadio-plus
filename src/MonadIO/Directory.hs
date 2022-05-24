@@ -6,7 +6,7 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.Directory
-  ( chdir, inDir, mkdir, mkpath, nuke )
+  ( chdir, inDir, lsdir, mkdir, mkpath, nuke )
 where
 
 import Base1T
@@ -14,11 +14,12 @@ import Base1T
 -- base --------------------------------
 
 import Control.Monad       ( filterM )
+import System.IO           ( FilePath )
 import System.Posix.Types  ( FileMode )
 
 -- directory ---------------------------
 
-import System.Directory  ( createDirectory, removePathForcibly
+import System.Directory  ( createDirectory, listDirectory, removePathForcibly
                          , setCurrentDirectory, withCurrentDirectory )
 
 -- exceptions --------------------------
@@ -27,10 +28,19 @@ import Control.Monad.Catch  ( MonadCatch, onException )
 
 -- fpath -------------------------------
 
-import FPath.AsFilePath  ( AsFilePath, filepath )
-import FPath.Dir         ( DirAs( _Dir_ ) )
-import FPath.DirType     ( DirType )
-import FPath.Parent      ( HasParentMay, parents' )
+import FPath.AppendableFPath   ( AppendableFPath, (⫻) )
+import FPath.AsFilePath        ( AsFilePath, filepath )
+import FPath.Dir               ( DirAs( _Dir_ ) )
+import FPath.DirType           ( DirType )
+import FPath.Error.FPathError  ( AsFPathError )
+import FPath.Parent            ( HasParentMay, parents' )
+import FPath.Parseable         ( parse )
+import FPath.RelFile           ( RelFile )
+import FPath.ToDir             ( ToDir )
+
+-- fstat -------------------------------
+
+import FStat  ( FStat )
 
 -- monaderror-io -----------------------
 
@@ -46,7 +56,8 @@ import Safe  ( headMay )
 ------------------------------------------------------------
 
 import MonadIO.Base   ( chmod )
-import MonadIO.FStat  ( FExists( FExists, NoFExists ), fexists, lfexists )
+import MonadIO.FStat  ( FExists( FExists, NoFExists )
+                      , fexists, lfexists, lstats, pathTypes )
 
 --------------------------------------------------------------------------------
 
@@ -117,5 +128,28 @@ mkpath d p = do
     𝕵 t  → -- make the intervening dirs, carefully; in case of any error,
            -- try to nuke those we freshly made
            onException (forM_ to_make (\ a → mkdir a p)) (nuke t)
+
+----------------------------------------
+
+_lstdr ∷ ∀ ε δ μ .
+         (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+         δ → μ [FilePath]
+_lstdr d = asIOError $ listDirectory (d ⫥ filepath)
+
+----------
+
+{-| List a directory's files & subdirs, along with their stat results.
+    The results are split into files & dirs, so that they get appropriate types
+    (`AbsDir`/`AbsFile`, or `RelDir`/`RelFile`).
+-}
+-- can we mandate somewhere that α ~ DirType (FileType α), at the typelevel?
+lsdir ∷ ∀ ε ε' ρ α μ .
+        (MonadIO μ, AsFPathError ε, MonadError ε μ, HasCallStack,
+         AsFilePath α, ToDir ρ, AsIOError ε', AppendableFPath α RelFile ρ) ⇒
+        α → μ ([(ρ, FStat)], [(DirType ρ, FStat)], [(ρ, ε')])
+lsdir d = do
+  fns ← liftIO (listDirectory (d ⫥ filepath))
+  xs ← sequence $ (fmap (d ⫻) ∘ parse @RelFile) ⊳ fns
+  (foldr pathTypes ([],[],[]) ⩺ lstats) xs
 
 -- that's all, folks! ----------------------------------------------------------

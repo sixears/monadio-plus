@@ -12,7 +12,7 @@
 
 module MonadIO.FStat
   ( FExists(..), extantP, extantP', fexists, fexists', isDir, lisDir, lfexists
-  , lfexists', lstat, stat, tests )
+  , lfexists', lstat, lstat', lstats, stat, stat', stats, pathTypes, tests )
 where
 
 import Base1T
@@ -31,6 +31,7 @@ import FPath.AsFilePath   ( AsFilePath( filepath ) )
 import FPath.AsFilePath'  ( exterminate )
 import FPath.DirType      ( DirType )
 import FPath.Parent       ( HasParentMay, parents' )
+import FPath.ToDir        ( ToDir, toDir )
 
 -- fstat -------------------------------
 
@@ -40,7 +41,8 @@ import FStat  ( FStat, FileType( Directory ), ftype, mkfstat )
 
 import MonadError           ( eFromMaybe )
 import MonadError.IO        ( asIOErrorY )
-import MonadError.IO.Error  ( IOError, squashInappropriateTypeT )
+import MonadError.IO.Error  ( IOError
+                            , squashInappropriateTypeT, unsquashNoSuchThing' )
 
 -- safe --------------------------------
 
@@ -147,10 +149,20 @@ _stat s fn = do
   let fp = exterminate $ fn ⫥ filepath
    in join ⊳⊳ squashInappropriateTypeT ∘ asIOErrorY ∘ fmap mkfstat ∘ s $ fp
 
--- | file stat; returns Nothing if file does not exist
+----------------------------------------
+
+{- | file stat; returns Nothing if file does not exist -}
 stat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
        ρ → μ (𝕄 FStat)
 stat = _stat getFileStatus
+
+----------------------------------------
+
+{-| Like `stat`, but a missing file raises a @DoesNotExistError@ -}
+stat' ∷ ∀ ε ρ μ .
+        (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+        ρ → μ FStat
+stat' fp = unsquashNoSuchThing' stat ("stat"∷𝕋) (fp ⫥ filepath)
 
 ----------------------------------------
 
@@ -161,6 +173,14 @@ stat = _stat getFileStatus
 lstat ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
         ρ → μ (𝕄 FStat)
 lstat = _stat getSymbolicLinkStatus
+
+----------------------------------------
+
+{-| Like `lstat`, but a missing file raises a @DoesNotExistError@ -}
+lstat' ∷ ∀ ε ρ μ .
+         (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+         ρ → μ FStat
+lstat' fp = unsquashNoSuchThing' lstat ("lstat"∷𝕋) (fp ⫥ filepath)
 
 ----------
 
@@ -226,6 +246,37 @@ isDir = fmap (maybe 𝕱 (≡Directory) ∘ fmap ftype) ∘ stat
 lisDir ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
          ρ → μ 𝔹
 lisDir = fmap (maybe 𝕱 (≡Directory) ∘ fmap ftype) ∘ lstat
+
+----------------------------------------
+
+{- | Given a set of filenames with their stats, compile a list of files, dirs &
+     errors. -}
+pathTypes ∷ ∀ ε ρ . (ToDir ρ) ⇒
+            (ρ, 𝔼 ε FStat)
+          → ([(ρ,FStat)],[(DirType ρ,FStat)],[(ρ,ε)])
+          → ([(ρ,FStat)],[(DirType ρ,FStat)],[(ρ,ε)])
+pathTypes (r, 𝕷 e) (fs, ds, es) = (fs, ds, (r,e) : es)
+pathTypes (r, 𝕽 st) (fs,ds,es) = case ftype st of
+                                      Directory → (fs,(toDir r,st):ds,es)
+                                      _         → ((r,st):fs,ds,es)
+
+----------------------------------------
+
+{-| Pair a list of files with their stat outputs. -}
+stats ∷ ∀ ε ρ ψ η μ .
+         (MonadIO μ, AsFilePath ρ, Traversable ψ,
+          AsIOError ε, MonadError ε η, HasCallStack) ⇒
+         ψ ρ → μ (ψ (ρ, η FStat))
+stats fns = sequence $ fmap (\ fn → (fn,) ⊳ ѥ (stat' fn)) fns
+
+----------------------------------------
+
+{-| Like `stats`, but using `lstat` -}
+lstats ∷ ∀ ε ρ ψ η μ .
+         (MonadIO μ, AsFilePath ρ, Traversable ψ,
+          AsIOError ε, MonadError ε η, HasCallStack) ⇒
+         ψ ρ → μ (ψ (ρ, η FStat))
+lstats fns = sequence $ fmap (\ fn → (fn,) ⊳ ѥ (lstat' fn)) fns
 
 --------------------------------------------------------------------------------
 

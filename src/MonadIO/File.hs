@@ -364,12 +364,14 @@ readlinkTests =
  -}
 resolvelink' ∷ ∀ ε μ . (MonadIO μ, HasCallStack,
                        AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
-              (AbsFile → μ Abs) → (Abs → μ (𝕄 FStat)) → AbsFile → μ Abs
-resolvelink' rdlk lstt fp = do
+               (AbsFile → μ Abs) → (Abs → μ (𝕄 FStat)) → [AbsFile] → AbsFile
+             → μ Abs
+resolvelink' rdlk lstt prior fp = do
+  when (fp ∈ prior) $ ioThrow ([fmtT|readlink cycle detected: %L|] prior)
   r ← rdlk fp
   ftype ⊳⊳ lstt r ≫ \ case
     𝕵 SymbolicLink → case toFileY r of
-                       𝕵 r' → resolvelink' rdlk lstt r'
+                       𝕵 r' → resolvelink' rdlk lstt (fp:prior) r'
                        -- this should never happen; toFileY only fails
                        -- / or ./, and neither can ever be a symlink
                        𝕹 → ioThrow $ [fmtT|eh?: '%T' is a symlink!?|] r
@@ -386,7 +388,7 @@ resolvelink' rdlk lstt fp = do
 resolvelink ∷ ∀ ε μ . (MonadIO μ, HasCallStack,
                        AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
               AbsFile → μ Abs
-resolvelink = resolvelink' readlink lstat
+resolvelink = resolvelink' readlink lstat []
 
 ----------------------------------------
 
@@ -404,7 +406,7 @@ rename ∷ ∀ ε γ δ μ . (MonadIO μ, HasCallStack, FileAs γ, FileAs δ,
 rename (review _File_ → from) (review _File_ → to) =
   liftIO $ Files.rename (from ⫥ filepath) (to ⫥ filepath)
 
-----------------------------------------
+------------------------------------------------------------
 
 {-| unit tests -}
 tests ∷ TestTree

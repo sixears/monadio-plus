@@ -1,3 +1,15 @@
+2.4.3.0 2022-05-23
+==================
+- add lstat', lstats, stat', stats, pathTypes, lsdir
+
+2.4.2.0 2022-05-16
+==================
+- add ByteString to ToMaybeTexts; generate (x,y) instances of ToMaybeTexts
+
+2.4.1.0 2022-05-13
+==================
+- resolvelink' now takes a list of prior seen values, to detect symlink cycles
+
 2.4.0.1 2022-05-11
 ==================
 - fix resolvelink' to call itself, not resolvelink (without the "'") recursively
