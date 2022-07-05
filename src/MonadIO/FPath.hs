@@ -13,6 +13,7 @@
 module MonadIO.FPath
   ( PResolvable( pResolveDir, pResolve )
 
+  , fpInner
   -- re-exported for backwards compatibility
   , getCwd
 
@@ -21,15 +22,14 @@ module MonadIO.FPath
 where
 
 import Base1T
-import Debug.Trace  ( trace, traceShow )
 
 -- base --------------------------------
 
 import qualified  Data.List
 
 import Control.Monad  ( filterM )
-import Data.List      ( dropWhile, dropWhileEnd, filter, intercalate, isPrefixOf
-                      , isSuffixOf, reverse, scanl, scanr,zip )
+import Data.List      ( dropWhile, dropWhileEnd, filter, intercalate, reverse
+                      , scanl, scanr,zip )
 
 -- containers --------------------------
 
@@ -54,7 +54,6 @@ import FPath.AbsDir            ( AbsDir, absdir, __parseAbsDirP__, root )
 import FPath.AbsFile           ( AbsFile, absfileT )
 import FPath.AppendableFPath   ( (⫻) )
 import FPath.AsFilePath        ( AsFilePath( filepath ) )
-import FPath.AsFilePath'       ( exterminate )
 import FPath.Basename          ( basename )
 import FPath.Dirname           ( dirname )
 import FPath.Error.FPathError  ( AsFPathError, FPathIOError, _FPathEmptyE
@@ -92,7 +91,7 @@ import MonadIO.FStat  ( FExists( FExists ), fexists )
 _inDir ∷ ∀ ε α τ μ .
          (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack, Printable τ) ⇒
          τ → IO α → μ α
-_inDir (toString → d) io = traceShow ("_inDir",d) $
+_inDir (toString → d) io =
   -- ensure that the path is attached to the error
   (ѥ ∘ asIOError $ withCurrentDirectory d io) ≫ \ case
     Left e' → join $ throwError (e' ~~ d)-- (ioEWithPath d e')
@@ -116,43 +115,46 @@ scan f b xs = zip (scanl f b xs) (scanr f b xs)
      @
 
      Note that:
+       -) Single @"."@ components are elided, except for a sole @"."@
+          (see `normalize`).
+       -) The path @""@ is considered exactly as @"."@.
        -) any trailing '/' is dropped.
        -) all sequences of slashes are compressed to a single slash.  This is
           done to avoid questions of whether "//" should be split to ("/","/")
           (clearly, it should not), and the potential return of ("///", "foo")
           leading to a 'root' directory of "///", which fexists considers not
           to exist.
+       -) There are always at least two options; i.e., "before" and "after" the
+          path - even for @"."@.
  -}
 splitPoints ∷ FilePath → [(FilePath,FilePath)]
-splitPoints f =
-  let -- compress "//…" sequences to a single /.
-      -- this is always fair game for slashes, and in particular means that the
-      -- split points will work; e.g., you don't end with a split point of
-      -- "///", which doesn't exist
-      compressSlashes ∷ FilePath → FilePath
-      compressSlashes ('/' : p) = '/' : compressSlashes (dropWhile (≡ '/') p)
-      compressSlashes (c   : p) = c : compressSlashes p
-      compressSlashes []        = []
-   in scan (</>) "" (splitPath $ exterminate (compressSlashes f))
+splitPoints f = scan (</>) "" (splitPath $ normalize f)
+
+----------
 
 splitPointsTests ∷ TestTree
 splitPointsTests =
   testGroup "splitPoints" $
     let check sp exp = testCase sp $ exp @=? splitPoints sp
-     in [ check ""          [("","/"),("/","")]
+     in [ check ""          [("","")]
+        , check "."         [("","."),(".","")]
         , check "/"         [("","/"),("/","")]
         , check "/foo"      [("","/foo"),("/","foo"),("/foo","")]
         , check "./"        [("","./"),("./","")]
-        , check "./foo"     [("","./foo"),("./","foo"),("./foo","")]
-        , check "bar/./foo" [("","bar/./foo"),("bar/","./foo"),("bar/./","foo")
-                            ,("bar/./foo","")]
+        , check "./foo"     [("","foo"),("foo","")]
+        , check "bar/./foo" [("","bar/foo"), ("bar/","foo"), ("bar/foo","")]
+        , check "bar/../foo" [("","bar/../foo"),("bar/","../foo"),
+                              ("bar/../","foo"),("bar/../foo","")]
+        , check "."         [("","."),(".","")]
         , check "///"       [("","/"),("/","")]
         , check ".///"      [("","./"),("./","")]
-        , check "//./"      [("","/./"),("/","./"),("/./","")]
-        , check "///."      [("","/."),("/","."),("/.","")]
+        , check "//./"      [("","/"),("/","")]
+        , check "///."      [("","/"),("/","")]
         , check "/foo/bar/" [("","/foo/bar/"),("/","foo/bar/")
                             ,("/foo/","bar/"),("/foo/bar/","")]
         ]
+
+--------------------
 
 {- | Given an absdir and a subsequent filepath (which might be absolute),
      return a pair of the initial filepath that exists, which has been fully
@@ -175,63 +177,140 @@ resolve d fp =
 
 ----------------------------------------
 
-{- | Compress multiple @/@ to a single @/@; remove @.@; remove @x/..@ sequences.
-     Note that logically, @""@ canonicalizes to @"."@, for consistency with (say)
-     @"foo/.."@.
+{-| Enact a function on a FilePath excluding any leading or trailing slash; which
+    are preserved.  Multiple leading or trailing slashes are compressed to a
+    single instance.
 
-     This is not the same as `resolve`, which checks the filesystem.  It is
-     somewhat similar to @realpath --logical@.  For example, if @/tmp/foo/pam@
-     points to @/etc/pam@ (which is a real directory); then @realpath@ of
-     @/tmp/foo/pam/..@ will be @/etc@; but @realpath --logical@ of
-     @/tmp/foo/pam/..@ will be @/tmp/foo@.  `canonicalize` should give the same
-     result.
- -}
+    A path consisting solely of @'/'@ characters is always compressed to a
+    single @'/'@.
+-}
+fpInner ∷ (FilePath → FilePath) → FilePath → FilePath
+fpInner f = fpInner' (const ∘ const f)
+
+{-| Like `fpInner`, but the input function also gets a flag for whether
+    the original input fp was absolute (had a leading @'/'@ character) and/or
+    was a dir (had a trailing @'/'@ character).
+-}
+fpInner' ∷ (𝔹 → 𝔹 → FilePath → FilePath) → FilePath → FilePath
+fpInner' _ ('/':xs) | "" ≡ filter (≢'/') xs = "/"
+fpInner' f fp = let is_abs = 𝕵 '/' ≡ head fp
+                    is_dir = 𝕵 '/' ≡ last fp
+                    pfx = if is_abs then "/" else ""
+                    sfx = if is_dir then "/" else ""
+                    fp' = dropWhile (≡'/') $ dropWhileEnd (≡'/') fp
+                    fp'' = f is_abs is_dir fp'
+                in  if "" ≡ fp''
+                    then if is_abs
+                         then "/"
+                         else if is_dir then "./" else "."
+                    else pfx ⊕ f is_abs is_dir fp'' ⊕ sfx
+
+{-| Like `fpInner'`, but the manipulation function is called with the input
+    path already split into components; each with neither leading nor trailing
+    slash.
+-}
+fpInner'Comp  ∷ (𝔹 → 𝔹 → [FilePath] → [FilePath]) → FilePath → FilePath
+fpInner'Comp f =
+  -- simply dropping all the slashes from the end is fine, since this is called
+  -- with the leading and trailing '/' from the full path already handled by
+  -- `fpInner'`
+  let split = dropWhileEnd (≡'/') ⩺ splitPath
+      f' is_abs is_dir fp = intercalate "/" ∘ f is_abs is_dir $ split fp
+  in  fpInner' f'
+
+----------------------------------------
+
+normalizeInner ∷ [FilePath] → [FilePath]
+normalizeInner fps = filter (≢ ".") fps
+
+{-| Compress repeated @'/'@ characters to singles; remove "." paths except for
+    @"."@ and @"./"@ themselves.
+-}
+normalize ∷ FilePath → FilePath
+normalize "" = ""
+normalize fp = fpInner'Comp (\ _ _ → normalizeInner) fp
+
+--------------------
+
+normalizeTests ∷ TestTree
+normalizeTests =
+  testGroup "normalize" $
+    let check p exp = testCase p $ exp @=? normalize p
+     in [ check ""      ""
+        , check "/"     "/"
+        , check "/."     "/"
+        , check "/./"   "/"
+        , check "/././" "/"
+        , check "//"    "/"
+        , check "///"   "/"
+        , check "///."  "/"
+        , check "//./"  "/"
+        , check "/.//"  "/"
+        , check "."     "."
+        , check "./."   "."
+        , check "./"    "./"
+        , check ".//"   "./"
+        , check ".///"  "./"
+
+        , check "/././etc" "/etc"
+        , check "/././etc/" "/etc/"
+
+        , check "/etc" "/etc"
+        , check "/etc/" "/etc/"
+
+        , check "etc" "etc"
+        , check "etc/" "etc/"
+        ]
+
+----------------------------------------
+
+canonicalizeInner ∷ 𝔹 → [FilePath] → [FilePath]
+canonicalizeInner is_abs fps =
+  go ([],fps)
+  where -- Maintain two stacks: a no-further-inspection stack (LHS), and a
+        -- stack-under-examination; when we remove an x/.. stanza, we re-add
+        -- a component from the no-further-inspection stack, to allow it to
+        -- be "cancelled out" by a later ".." if appropriate.
+        go (ys,[]) = reverse ys
+        go ([],"..":xs) | is_abs = go([],xs) -- @".."@ in the root directory
+                                             -- is always a reference to the
+                                   -- root directory (try it!)
+
+        go (ys,"..":xs) = go("..":ys,xs) -- (1) see below
+
+        -- It is important that having removed an x/.., we add back the dir
+        -- "above" x to the stack-under-examination; so that, e.g., y/x/../..
+        -- gets reduced to y/.. which can be reduced.  Without this, the y
+        -- would remain on the no-further-inspection stack, and the ".." would
+        -- be pushed on there too, missing the opportunity for reduction.
+
+        go ([],_:"..":xs) = go ([],xs)
+        go (ys@("..":_),_:"..":xs) = go(ys,xs) -- no point pushing a ".." back
+                                               -- onto the
+                                               -- stack-under-examination, as by
+                                               -- pattern (1), it will just get
+                                               -- popped back again.
+
+        go (y:ys,_:"..":xs) = go(ys,y:xs)
+        go (ys,x:xs) = go (x:ys,xs)
+
+{-| Compress multiple @/@ to a single @/@; remove @.@; remove @x/..@ sequences.
+    Note that logically, @""@ canonicalizes to @"."@, for consistency with (say)
+    @"foo/.."@.
+
+    This is not the same as `resolve`, which checks the filesystem.  It is
+    somewhat similar to @realpath --logical@.  For example, if @/tmp/foo/pam@
+    points to @/etc/pam@ (which is a real directory); then @realpath@ of
+    @/tmp/foo/pam/..@ will be @/etc@; but @realpath --logical@ of
+    @/tmp/foo/pam/..@ will be @/tmp/foo@.  `canonicalize` should give the same
+    result.
+
+    Note that this doesn't guarantee that all the ".." components will be gone;
+    e.g., ".." at the beginning of a relative path cannot be removed.
+-}
 canonicalize ∷ FilePath → FilePath
-canonicalize p =
-  let is_abs = "/" `isPrefixOf` p
-      is_dir = "/" `isSuffixOf` p
-      go' ∷ [FilePath] → [FilePath]
-      go' xs = let r = go ([],xs) in traceShow ("go'",xs,r) (reverse (fst r) ⊕ snd r)
-      go ∷ ([FilePath],[FilePath]) → ([FilePath],[FilePath])
-      go zs@(ys,".":xs) = traceShow("go",zs) $ go (ys,xs)
--- this can probably be more efficient by only considering the last element of
--- ys
-      go zs@([],"..":xs) | is_abs = traceShow("go",zs) $ go ([],xs)
-      go zs@(y:ys,[".."]) | y ≢ ".." = traceShow("go",zs) $ go (ys,[])
-      go zs@(ys,x:"..":xs) = traceShow("go",zs) $ go ([],reverse ys⊕xs)
-      go zs@(ys,x:xs) = traceShow("go",zs) $ go(x:ys,xs)
-      go zs@(ys,[]) = traceShow("go",zs) $ (ys,[])
---      go [] = []
-      rex ∷ FilePath → FilePath
-      rex "" = traceShow ("rex empty",is_abs,is_dir) $
-               if is_abs
-               then "/"
-               else if is_dir then "./" else "."
-      rex x = traceShow ("rex",x,is_abs,is_dir,p) $ if is_abs
-              then if is_dir then "/" ⊕ x ⊕ "/" else "/" ⊕ x
-              else  if is_dir then x ⊕ "/" else x
-   in rex ∘ intercalate "/" $ go' $ fmap (dropWhileEnd (≡'/')) $ splitPath (dropWhile (≡'/') (dropWhileEnd (≡'/') p))
-
--- XXX test with /, ./, .
-_canonicalize "" = ""
-_canonicalize p =
-  let abs = "/" `isPrefixOf` p
-   in rex $ intercalate "/" ∘ go' ∘ go $ dropWhileEnd (≡'/') ⊳ splitPath p
-   where rex "" = if "/" `isPrefixOf` p
-                  then "/"
-                  else if "/" `isSuffixOf` p then "./" else "."
-         rex "/" = "/"
-         rex xs = xs ⊕ if 𝕵 '/' ≡ last p then "/" else ""
-         go []        = []
-         go ["."] = ["."]
---         go ("..":xs) = ".." : go xs
-         go (".":xs) = go xs
---         go (".":"..":xs) = "." : go ("..":xs)
-         go (x:"..":xs) = go xs
-         go (x:"..":xs) = go xs
-         go (x:xs) = x : go xs
-         go' ["."] = ["."]
-         go' xs = filter (≢ ".") xs
+canonicalize =
+  fpInner'Comp (\ is_abs _ → canonicalizeInner is_abs ∘ normalizeInner)
 
 canonicalizeTests ∷ TestTree
 canonicalizeTests =
@@ -257,6 +336,7 @@ canonicalizeTests =
         , check "/etc/pam/../../var" "/var"
         , check "/etc/pam/../../var/" "/var/"
         , check "/etc/../var/log/.." "/var"
+        -- /.. is / (try it!)
         , check "/../etc/../var/log/.." "/var"
         , check "../etc/../var/log" "../var/log"
         , check "../etc/../var/log/" "../var/log/"
@@ -316,16 +396,16 @@ instance PResolvable AbsDir where
                 (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
                  HasCallStack, MonadIO μ) ⇒
                 AbsDir → τ → μ AbsDir
-  pResolveDir d (toString → p) = traceShow ("pResolveDir AbsDir", d, p ) $ do
+  pResolveDir d (toString → p) = do
     (extant,non_extant) ← resolve d p
-    d' ← traceShow("pResolveDir AD",extant,non_extant) $ _inDirT extant getCwd
+    d' ← _inDirT extant getCwd
     let -- add a trailing / so reldir parses it
         toDir ∷ FilePath → FilePath
         toDir "" = "./"
         toDir t  = case Data.List.last t of -- last is safe, t is non-empty
                      '/' → t
                      _   → t ⊕ "/"
-    p' ← traceShow("pResolveDir AD+",d',non_extant) $ parse @RelDir (toDir non_extant)
+    p' ← parse @RelDir (toDir non_extant)
     return $ d' ⫻ p'
 
 ----------
@@ -419,7 +499,7 @@ instance PResolvable AbsFile where
                 (Printable τ, AsIOError ε, AsFPathError ε, MonadError ε μ,
                  HasCallStack, MonadIO μ) ⇒
                 AbsDir → τ → μ AbsFile
-  pResolveDir d (toString → f) = traceShow ("pResolveDir AbsFile", d, f ) $
+  pResolveDir d (toString → f) =
     -- we can't simply use parseRelFile, etc., here, as we want to accept
     -- paths with '..' and '.' in them (and resolve them)
     case breakr (≡ '/') $ fromList f of
@@ -559,7 +639,9 @@ pResolveTests = testGroup "pResolve" [ pResolveAbsDirTests
 
 tests ∷ TestTree
 tests = testGroup "MonadIO.FPath" [ splitPointsTests, canonicalizeTests
-                                  , pResolveTests, pResolveDirTests ]
+                                  , normalizeTests
+                                  , pResolveTests, pResolveDirTests
+                                  ]
 
 ----------------------------------------
 

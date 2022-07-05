@@ -1,3 +1,7 @@
+2.5.0.0 2022-07-04
+==================
+- big changes to resolvelink, also readlink, canonicalize, normalize
+
 2.4.3.0 2022-05-23
 ==================
 - add lstat', lstats, stat', stats, pathTypes, lsdir
