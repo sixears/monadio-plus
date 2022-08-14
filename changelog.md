@@ -1,3 +1,7 @@
+2.5.1.0 2022-08-14
+==================
+- add String instance to OutputData for tempfiles tests
+
 2.5.0.0 2022-07-04
 ==================
 - big changes to resolvelink, also readlink, canonicalize, normalize

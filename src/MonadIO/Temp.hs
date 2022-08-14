@@ -146,6 +146,12 @@ openTempFile (review $ filepath ∘ _Dir_ → d) (review filepath → r) = do
 class OutputData τ where
   output ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ ℍ → τ → μ ()
 
+instance OutputData 𝕊 where
+  output h t = asIOError $ do
+    hSetEncoding      h utf8
+    hSetNewlineMode   h nativeNewlineMode
+    System.IO.hPutStr h t
+
 instance OutputData 𝕋 where
   output h t = asIOError $ do
     hSetEncoding     h utf8
