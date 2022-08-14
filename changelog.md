@@ -1,3 +1,7 @@
+2.5.1.1 2022-08-14
+==================
+- write Strings as latin1
+
 2.5.1.0 2022-08-14
 ==================
 - add String instance to OutputData for tempfiles tests

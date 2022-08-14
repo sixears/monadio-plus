@@ -6,7 +6,7 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.Temp
-  ( mkTempDir
+  ( OutputData(..), mkTempDir
   , tempfile, tempfile', tempfile''
   , testsWithTempfile, testsWithTempfiles, testsWithTempfiles'
   , withTempDir'', withTempDirCD, withTempDirCD'
@@ -32,7 +32,8 @@ import System.Environment     ( getProgName )
 import System.IO              ( FilePath, Handle
                               , SeekMode( AbsoluteSeek )
                               , char8, hSeek, hSetEncoding, hSetNewlineMode
-                              , nativeNewlineMode, noNewlineTranslation, utf8
+                              , latin1, nativeNewlineMode, noNewlineTranslation
+                              , utf8
                               )
 
 -- bytestring --------------------------
@@ -138,9 +139,9 @@ openTempFile (review $ filepath ∘ _Dir_ → d) (review filepath → r) = do
 
 {- | Data that may be written to a filehandle, setting encoding and newline
      mode; `Text` is written as utf8 with native line-endings, while
-     `ByteStrings` are written as bytes with no newline translation.  The
-     `Handle` is left in whatever encoding & newline-translation is implied by
-     the input type.
+     `ByteString`s are written as bytes with no newline translation.  `String`s
+     are written as latin1 with native line-endings.  The `Handle` is left in
+     whatever encoding & newline-translation is implied by the input type.
  -}
 
 class OutputData τ where
