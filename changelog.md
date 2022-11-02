@@ -1,3 +1,7 @@
+2.5.1.2 2022-11-02
+==================
+- upgrade flake-build-utils to 1.0.0.3
+
 2.5.1.1 2022-08-14
 ==================
 - write Strings as latin1

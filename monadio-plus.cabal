@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.5.1.1
+version:             2.5.1.2
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -146,7 +146,8 @@ executable cwd
   hs-source-dirs:      bin
   build-depends:       base, data-textual
 
-                     , fpath, monaderror-io, more-unicode
+                     , fpath, monaderror-io
+                     , more-unicode >= 0.0.17.1
 
                      , monadio-plus
   default-extensions:  LambdaCase
