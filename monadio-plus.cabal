@@ -146,7 +146,8 @@ executable cwd
   hs-source-dirs:      bin
   build-depends:       base, data-textual
 
-                     , fpath, monaderror-io
+                     , fpath
+                     , monaderror-io
                      , more-unicode >= 0.0.17.1
 
                      , monadio-plus
@@ -168,7 +169,8 @@ executable cwd_
   hs-source-dirs:      bin
   build-depends:       base, data-textual
 
-                     , fpath, monaderror-io, more-unicode
+                     , fpath
+                     , monaderror-io, more-unicode
 
                      , monadio-plus
   default-extensions:  LambdaCase
