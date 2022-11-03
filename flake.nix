@@ -3,18 +3,18 @@
 
   inputs = {
     nixpkgs.url     = "github:nixos/nixpkgs/be44bf67"; # nixos-22.05 2022-10-15
-    build-utils.url = "github:sixears/flake-build-utils/r1.0.0.3";
+    build-utils.url = "github:sixears/flake-build-utils/r1.0.0.4";
 
-    base1t.url          = "github:sixears/base1t/r0.0.5.4";
-    containers-plus.url = "github:sixears/containers-plus/r0.0.10.5";
-    env-plus.url        = "github:sixears/env-plus/r1.0.7.4";
-    exited.url          = "github:sixears/exited/r1.0.4.5";
-    fpath.url           = "github:sixears/fpath/r1.3.2.4";
-    fstat.url           = "github:sixears/fstat/r1.0.2.3";
-    monaderror-io.url   = "github:sixears/monaderror-io/r1.2.5.4";
-    more-unicode.url    = "github:sixears/more-unicode/r0.0.17.2";
-    natural.url         = "github:sixears/natural/r0.0.1.2";
-    tasty-plus.url      = "github:sixears/tasty-plus/r1.5.2.4";
+    base1t.url          = "github:sixears/base1t/r0.0.5.5";
+    containers-plus.url = "github:sixears/containers-plus/r0.0.10.6";
+    env-plus.url        = "github:sixears/env-plus/r1.0.7.5";
+    exited.url          = "github:sixears/exited/r1.0.4.6";
+    fpath.url           = "github:sixears/fpath/r1.3.2.5";
+    fstat.url           = "github:sixears/fstat/r1.0.2.4";
+    monaderror-io.url   = "github:sixears/monaderror-io/r1.2.5.5";
+    more-unicode.url    = "github:sixears/more-unicode/r0.0.17.3";
+    natural.url         = "github:sixears/natural/r0.0.1.3";
+    tasty-plus.url      = "github:sixears/tasty-plus/r1.5.2.5";
   };
 
   outputs = { self, nixpkgs, flake-utils, build-utils
