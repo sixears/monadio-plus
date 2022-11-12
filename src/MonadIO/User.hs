@@ -12,7 +12,8 @@ import Base1T
 -- fpath -------------------------------
 
 import FPath.AbsDir            ( AbsDir, parseAbsDirP )
-import FPath.AppendableFPath   ( AppendableFPath, (⫻) )
+import FPath.AppendableFPath   ( AppendableFPath, AppendableFPathD
+                               , AppendableFPathF, (⫻) )
 import FPath.Error.FPathError  ( AsFPathError )
 
 -- lens --------------------------------
@@ -100,9 +101,9 @@ homeDir = fmap (view userDir) $ getuid ≫ pwUID
 
 {- | Construct an absolute dir/file from a relative dir/file, prepended with
      the home dir. -}
-homePath ∷ ∀ ε μ α β . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
-                        AppendableFPath AbsDir β α) ⇒
-           β → μ α
+homePath ∷ ∀ ε μ β . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ,
+                      AppendableFPath β, AppendableFPathD β ~ AbsDir) ⇒
+           AppendableFPathF β → μ β
 homePath p = homeDir ≫ return ∘ (⫻ p)
 
 ----------------------------------------

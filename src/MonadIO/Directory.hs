@@ -13,7 +13,6 @@ import Base1T
 
 -- base --------------------------------
 
-import Control.Monad       ( filterM )
 import System.IO           ( FilePath )
 import System.Posix.Types  ( FileMode )
 
@@ -28,7 +27,8 @@ import Control.Monad.Catch  ( MonadCatch, onException )
 
 -- fpath -------------------------------
 
-import FPath.AppendableFPath   ( AppendableFPath, (⫻) )
+import FPath.AppendableFPath   ( AppendableFPath, AppendableFPathF
+                               , AppendableFPathD, (⫻) )
 import FPath.AsFilePath        ( AsFilePath, filepath )
 import FPath.Dir               ( DirAs( _Dir_ ) )
 import FPath.DirType           ( DirType )
@@ -143,10 +143,11 @@ _lstdr d = asIOError $ listDirectory (d ⫥ filepath)
     (`AbsDir`/`AbsFile`, or `RelDir`/`RelFile`).
 -}
 -- can we mandate somewhere that α ~ DirType (FileType α), at the typelevel?
-lsdir ∷ ∀ ε ε' ρ α μ .
+lsdir ∷ ∀ ε ε' ρ μ .
         (MonadIO μ, AsFPathError ε, MonadError ε μ, HasCallStack,
-         AsFilePath α, ToDir ρ, AsIOError ε', AppendableFPath α RelFile ρ) ⇒
-        α → μ ([(ρ, FStat)], [(DirType ρ, FStat)], [(ρ, ε')])
+         AsFilePath (AppendableFPathD ρ), ToDir ρ, AsIOError ε',
+         AppendableFPath ρ, AppendableFPathF ρ ~ RelFile) ⇒
+        AppendableFPathD ρ → μ ([(ρ, FStat)], [(DirType ρ, FStat)], [(ρ, ε')])
 lsdir d = do
   fns ← liftIO (listDirectory (d ⫥ filepath))
   xs ← sequence $ (fmap (d ⫻) ∘ parse @RelFile) ⊳ fns

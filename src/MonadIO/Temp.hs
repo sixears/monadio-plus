@@ -32,8 +32,7 @@ import System.Environment     ( getProgName )
 import System.IO              ( FilePath, Handle
                               , SeekMode( AbsoluteSeek )
                               , char8, hSeek, hSetEncoding, hSetNewlineMode
-                              , latin1, nativeNewlineMode, noNewlineTranslation
-                              , utf8
+                              , nativeNewlineMode, noNewlineTranslation, utf8
                               )
 
 -- bytestring --------------------------

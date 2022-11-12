@@ -27,13 +27,12 @@ import Base1T
 
 import qualified  Data.List
 
-import Control.Monad  ( filterM )
-import Data.List      ( dropWhile, dropWhileEnd, filter, intercalate, reverse
-                      , scanl, scanr,zip )
+import Data.List  ( dropWhile, dropWhileEnd, filter, intercalate, reverse, scanl
+                  , scanr,zip )
 
 -- containers --------------------------
 
-import Data.Sequence  ( Seq( Empty ), breakr {- , fromList -} )
+import Data.Sequence  ( Seq( Empty ), breakr )
 
 -- directory ---------------------------
 
