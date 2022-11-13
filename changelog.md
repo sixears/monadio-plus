@@ -1,3 +1,7 @@
+2.5.1.13 2022-11-13
+===================
+- fix fixed-package-name typo in flake-build-utils
+
 2.5.1.12 2022-11-12
 ===================
 - make flake build work
