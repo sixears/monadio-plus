@@ -5,14 +5,14 @@
     nixpkgs.url     = "github:nixos/nixpkgs/be44bf67"; # nixos-22.05 2022-10-15
     build-utils.url = "github:sixears/flake-build-utils/r1.0.0.12";
 
-    base1t.url          = github:sixears/base1t/r0.0.5.25;
-    env-plus.url        = github:sixears/env-plus/r1.0.7.25;
+    base1t.url          = github:sixears/base1t/r0.0.5.26;
+    env-plus.url        = github:sixears/env-plus/r1.0.7.26;
 
     exited.url          = github:sixears/exited/r1.0.4.17;
-    fpath.url           = github:sixears/fpath/r1.3.2.24;
+    fpath.url           = github:sixears/fpath/r1.3.2.25;
     fstat.url           = github:sixears/fstat/r1.0.2.18;
 
-    containers-plus.url = github:sixears/containers-plus/r0.0.10.26;
+    containers-plus.url = github:sixears/containers-plus/r0.0.10.27;
     monaderror-io.url   = github:sixears/monaderror-io/r1.2.5.14;
     more-unicode.url    = "github:sixears/more-unicode/r0.0.17.9";
     natural.url         = "github:sixears/natural/r0.0.1.10";
