@@ -19406,16 +19406,16 @@
         "tfmt": "tfmt_9"
       },
       "locked": {
-        "lastModified": 1668852007,
-        "narHash": "sha256-DaDdpUAi92+C9fef+a3xdAyyNs+UiO0wVBy1p55vMDc=",
+        "lastModified": 1668876122,
+        "narHash": "sha256-VIsLygZkBTodUd80pVfJiXa6L3UGDqeeY7OH+UtEFk8=",
         "owner": "sixears",
         "repo": "fpath",
-        "rev": "fc1adbf6167418ace17fa43fb6ea7ba71776fcd4",
+        "rev": "20266aabf6a8923723c10b1a0ac4af644306a85b",
         "type": "github"
       },
       "original": {
         "owner": "sixears",
-        "ref": "r1.3.2.35",
+        "ref": "r1.3.2.36",
         "repo": "fpath",
         "type": "github"
       }
