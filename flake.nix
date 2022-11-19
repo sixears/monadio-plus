@@ -9,7 +9,7 @@
     env-plus.url        = github:sixears/env-plus/r1.0.7.34;
 
     exited.url          = github:sixears/exited/r1.0.4.21;
-    fpath.url           = github:sixears/fpath/r1.3.2.35;
+    fpath.url           = github:sixears/fpath/r1.3.2.36;
     fstat.url           = github:sixears/fstat/r1.0.2.24;
 
     containers-plus.url = github:sixears/containers-plus/r0.0.10.36;
@@ -43,7 +43,7 @@
                     }:
         mkDerivation {
           pname = "monadio-plus";
-          version = "2.5.1.39";
+          version = "2.5.1.45"
           src = ./.;
           isLibrary = true;
           isExecutable = true;
