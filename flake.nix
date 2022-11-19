@@ -10,7 +10,7 @@
 
     exited.url          = github:sixears/exited/r1.0.4.21;
     fpath.url           = github:sixears/fpath/r1.3.2.35;
-    fstat.url           = github:sixears/fstat/r1.0.2.23;
+    fstat.url           = github:sixears/fstat/r1.0.2.24;
 
     containers-plus.url = github:sixears/containers-plus/r0.0.10.36;
     monaderror-io.url   = github:sixears/monaderror-io/r1.2.5.18;
