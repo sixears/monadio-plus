@@ -43,7 +43,7 @@
                     }:
         mkDerivation {
           pname = "monadio-plus";
-          version = "2.5.1.45"
+          version = "2.5.1.46";
           src = ./.;
           isLibrary = true;
           isExecutable = true;
