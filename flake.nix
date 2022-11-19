@@ -12,7 +12,7 @@
     fpath.url           = github:sixears/fpath/r1.3.2.32;
     fstat.url           = github:sixears/fstat/r1.0.2.23;
 
-    containers-plus.url = github:sixears/containers-plus/r0.0.10.33;
+    containers-plus.url = github:sixears/containers-plus/r0.0.10.34;
     monaderror-io.url   = github:sixears/monaderror-io/r1.2.5.18;
     more-unicode.url    = github:sixears/more-unicode/r0.0.17.11;
     natural.url         = github:sixears/natural/r0.0.1.13;
