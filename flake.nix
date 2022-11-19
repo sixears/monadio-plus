@@ -9,7 +9,7 @@
     env-plus.url        = github:sixears/env-plus/r1.0.7.32;
 
     exited.url          = github:sixears/exited/r1.0.4.21;
-    fpath.url           = github:sixears/fpath/r1.3.2.32;
+    fpath.url           = github:sixears/fpath/r1.3.2.33;
     fstat.url           = github:sixears/fstat/r1.0.2.23;
 
     containers-plus.url = github:sixears/containers-plus/r0.0.10.34;
