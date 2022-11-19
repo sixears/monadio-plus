@@ -9,10 +9,10 @@
     env-plus.url        = github:sixears/env-plus/r1.0.7.34;
 
     exited.url          = github:sixears/exited/r1.0.4.21;
-    fpath.url           = github:sixears/fpath/r1.3.2.34;
+    fpath.url           = github:sixears/fpath/r1.3.2.35;
     fstat.url           = github:sixears/fstat/r1.0.2.23;
 
-    containers-plus.url = github:sixears/containers-plus/r0.0.10.35;
+    containers-plus.url = github:sixears/containers-plus/r0.0.10.36;
     monaderror-io.url   = github:sixears/monaderror-io/r1.2.5.18;
     more-unicode.url    = github:sixears/more-unicode/r0.0.17.11;
     natural.url         = github:sixears/natural/r0.0.1.13;
