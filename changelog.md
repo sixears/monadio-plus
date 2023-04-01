@@ -1,3 +1,7 @@
+2.5.1.51 2023-04-01
+===================
+- test fixups for when running in a chroot with access to /etc
+
 2.5.1.49 2022-11-20
 ===================
 - has-callstack->1.0.1.19

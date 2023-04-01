@@ -214,8 +214,10 @@ isWritableDirTests =
                     "/nonsuch/ does not exist"
             , testE [absdir|/nonsuch/passwd/|]
                     "/nonsuch/passwd/ does not exist"
-            , testE [absdir|/etc/|]
-                    "cannot write to /etc/"
+-- this doesn't fail when, e.g., running in a chroot with a user
+-- namespace as root
+--            , testE [absdir|/etc/|]
+--                    "cannot write to /etc/"
             , testE [absdir|/etc/passwd/|]
                     "/etc/passwd is not a directory"
             ]
@@ -251,8 +253,10 @@ fileWritableTests =
                     "cannot write to /etc/passwd"
             , testE [absfile|/nonsuch/passwd|]
                     "/nonsuch/ does not exist (/nonsuch/passwd)"
-            , testE [absfile|/etc/nonsuch|]
-                    "cannot write to /etc/ (/etc/nonsuch)"
+-- this doesn't fail when, e.g., running in a chroot with a user
+-- namespace as root
+--            , testE [absfile|/etc/nonsuch|]
+--                    "cannot write to /etc/ (/etc/nonsuch)"
             , testE [absfile|/etc/passwd/nonsuch|]
                     "/etc/passwd is not a directory (/etc/passwd/nonsuch)"
             , testE [absfile|/etc|]
