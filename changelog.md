@@ -1,3 +1,7 @@
+2.5.2.0 2023-06-22
+==================
+- +getUserName
+
 2.5.1.51 2023-04-01
 ===================
 - test fixups for when running in a chroot with access to /etc

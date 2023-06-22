@@ -3,8 +3,8 @@
 
 {- | User lookup (from `/etc/passwd`, etc.) with MonadIO, FPath, etc. -}
 module MonadIO.User
-  ( getPwBy, getPwBy', getpwuid, getuid, homeDir, homeDirectory, homePath, pwUID
-  , userDir, userPwEntFromUserEntry )
+  ( getPwBy, getPwBy', getpwuid, getuid, getUserName, homeDir, homeDirectory
+  , homePath, pwUID, userDir, userName, userPwEntFromUserEntry )
 where
 
 import Base1T
@@ -45,8 +45,13 @@ data UserPwEnt = UserPwEnt { _userName ∷ UserName
                            }
   deriving Show
 
+{-| lens for homedir of `UserPwEnt` -}
 userDir ∷ Lens' UserPwEnt AbsDir
 userDir = lens _userDir (\ upe ud → upe { _userDir = ud })
+
+{-| lens for username of `UserPwEnt` -}
+userName ∷ Lens' UserPwEnt UserName
+userName = lens _userName (\ upe un → upe { _userName = un })
 
 {- | Convert a `UserEntry` to a `UserPwEnt`; throws error if the home dir is not
      a valid abs dir. -}
@@ -92,7 +97,6 @@ homeDirectory = (view userDir ⊳⊳) $ getuid ≫ getpwuid
 ----------------------------------------
 
 {- | Like `homeDirectory`, but throws if the getuid entry isn't found. -}
-
 homeDir ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
           μ AbsDir
 homeDir = fmap (view userDir) $ getuid ≫ pwUID
@@ -118,5 +122,10 @@ getuid = liftIO getRealUserID
 getpwuid ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
            UserID -> μ (𝕄 UserPwEnt)
 getpwuid = getPwBy getUserEntryForID
+
+{-| the current user name -}
+getUserName ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+              μ (𝕄 UserName)
+getUserName = fmap _userName ⊳ (getuid ≫ getpwuid)
 
 -- that's all, folks! ----------------------------------------------------------
