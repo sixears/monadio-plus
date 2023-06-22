@@ -3,8 +3,10 @@
 
 {- | User lookup (from `/etc/passwd`, etc.) with MonadIO, FPath, etc. -}
 module MonadIO.User
-  ( getPwBy, getPwBy', getpwuid, getuid, getUserName, homeDir, homeDirectory
-  , homePath, pwUID, userDir, userName, userPwEntFromUserEntry )
+  ( UserPwEnt, UserName
+  , getPwBy, getPwBy', getpwuid, getuid, getUserName, getUserName', homeDir
+  , homeDirectory, homePath, pwUID, userDir, userName, userPwEntFromUserEntry
+  )
 where
 
 import Base1T
@@ -22,7 +24,7 @@ import Control.Lens.Getter  ( view )
 
 -- monaderror-io -----------------------
 
-import MonadError.IO.Error  ( squashNoSuchThing )
+import MonadError.IO.Error  ( squashNoSuchThing, throwUserError )
 
 -- unix --------------------------------
 
@@ -123,9 +125,23 @@ getpwuid ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError 
            UserID -> μ (𝕄 UserPwEnt)
 getpwuid = getPwBy getUserEntryForID
 
+----------------------------------------
+
 {-| the current user name -}
 getUserName ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
               μ (𝕄 UserName)
 getUserName = fmap _userName ⊳ (getuid ≫ getpwuid)
+
+----------------------------------------
+
+{-| the current user name; throws an error if getpwuid can't find the uid -}
+getUserName' ∷ (MonadIO μ,
+                AsIOError ε, AsFPathError ε, Printable ε, MonadError ε μ) ⇒
+               μ UserName
+getUserName' = do
+  uid ← getuid
+  getpwuid uid ≫ \ case
+    𝕵 user_pw_ent → return (user_pw_ent ⊣ userName)
+    𝕹             → throwUserError $ [fmtT|no passwd entry found for %d|] uid
 
 -- that's all, folks! ----------------------------------------------------------
