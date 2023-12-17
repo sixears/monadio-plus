@@ -13,112 +13,111 @@
 {-| IO Operations on files -}
 
 module MonadIO.File
-  ( module FStat
+  ( AccessMode(..)
+  , module FStat
   , module OpenFile
-
-  , AccessMode(..), System.IO.IOMode(..)
+  , System.IO.IOMode(..)
+  , access
+  , chmod
+  , fileFoldLinesH
+  , fileFoldLinesUTF8
+  , fileWritable
   , hClose
-
-  , access, writable
-
-  , chmod, unlink, rename
-
-  , readlink, resolvelink, resolvelink'
-
-  , fileWritable, isWritableFile, isWritableDir
-
-  , fileFoldLinesUTF8, fileFoldLinesH
-
+  , isWritableDir
+  , isWritableFile
+  , readlink
+  , rename
+  , resolvelink
+  , resolvelink'
   , tests
-  )
-where
+  , unlink
+  , writable
+  ) where
 
 import Base1T
-import Prelude  ( error )
+import Prelude ( error )
 
 -- base --------------------------------
 
-import qualified Data.List.NonEmpty  as  NonEmpty
+import Data.List.NonEmpty qualified as NonEmpty
 
-import Data.List   ( isSuffixOf, or )
-import System.IO   ( FilePath, Handle, IOMode( AppendMode, ReadMode
-                                             , ReadWriteMode, WriteMode )
-                   , hIsEOF
-                   )
+import Data.List ( isSuffixOf, or )
+import System.IO ( FilePath, Handle,
+                   IOMode(AppendMode, ReadMode, ReadWriteMode, WriteMode),
+                   hIsEOF )
 
 -- fpath -------------------------------
 
-import FPath.Abs               ( Abs( AbsD, AbsF ) )
-import FPath.AbsDir            ( AbsDir, absdir, root )
-import FPath.AbsFile           ( absfile )
-import FPath.AppendableFPath   ( (⫻) )
-import FPath.AsFilePath        ( AsFilePath( filepath ) )
-import FPath.AsFilePath'       ( exterminate )
-import FPath.Dir               ( DirAs )
-import FPath.Error.FPathError  ( AsFPathError, FPathIOError )
-import FPath.File              ( FileAs( _File_ ) )
-import FPath.Parent            ( parent )
-import FPath.RelDir            ( reldir )
-import FPath.RelFile           ( RelFile, relfile )
-import FPath.ToDir             ( toDir )
-import FPath.ToFile            ( toFileY )
+import FPath.Abs              ( Abs(AbsD, AbsF) )
+import FPath.AbsDir           ( AbsDir, absdir, root )
+import FPath.AbsFile          ( absfile )
+import FPath.AppendableFPath  ( (⫻) )
+import FPath.AsFilePath       ( AsFilePath(filepath) )
+import FPath.AsFilePath'      ( exterminate )
+import FPath.Dir              ( DirAs )
+import FPath.Error.FPathError ( AsFPathError, FPathIOError )
+import FPath.File             ( FileAs(_File_) )
+import FPath.Parent           ( parent )
+import FPath.RelDir           ( reldir )
+import FPath.RelFile          ( RelFile, relfile )
+import FPath.ToDir            ( toDir )
+import FPath.ToFile           ( toFileY )
 
 -- fstat -------------------------------
 
-import FStat  ( FStat, FileType( Directory, SymbolicLink ), ftype )
+import FStat ( FStat, FileType(Directory, SymbolicLink), ftype )
 
 -- lens --------------------------------
 
-import Control.Lens.Getter  ( view )
+import Control.Lens.Getter ( view )
 
-import qualified System.FilePath.Lens
+import System.FilePath.Lens qualified
 
 -- monadio-error -----------------------
 
-import MonadError.IO        ( asIOErrorY, ioThrow )
-import MonadError.IO.Error  ( IOError )
+import MonadError.IO       ( asIOErrorY, ioThrow )
+import MonadError.IO.Error ( IOError )
 
 -- mtl ---------------------------------
 
-import Control.Monad.Trans   ( lift )
+import Control.Monad.Trans ( lift )
 
 -- text --------------------------------
 
-import qualified  Data.Text.IO  as  TextIO
+import Data.Text.IO qualified as TextIO
 
-import Data.Text  ( intercalate )
+import Data.Text ( intercalate )
 
 -- unix --------------------------------
 
-import qualified  System.Posix.Files  as  Files
-import System.Posix.Files  ( readSymbolicLink )
+import System.Posix.Files ( readSymbolicLink )
+import System.Posix.Files qualified as Files
 
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.FStat     as  FStat     hiding ( tests )
-import MonadIO.OpenFile  as  OpenFile  hiding ( tests )
+import MonadIO.FStat    as FStat hiding ( tests )
+import MonadIO.OpenFile as OpenFile hiding ( tests )
 
-import MonadIO.Base         ( chmod, hClose, unlink )
-import MonadIO.FPath        ( pResolve, pResolveDir )
-import MonadIO.NamedHandle  ( handle )
-import MonadIO.Tasty        ( TestFileSpec( TFSDir, TFSFile, TFSSymL )
-                            , testInTempDirFS )
+import MonadIO.Base        ( chmod, hClose, unlink )
+import MonadIO.FPath       ( pResolve, pResolveDir )
+import MonadIO.NamedHandle ( handle )
+import MonadIO.Tasty       ( TestFileSpec(TFSDir, TFSFile, TFSSymL),
+                             testInTempDirFS )
 
-import MonadIO.T.ReadlinkTestCases
-                            ( readExp, readlinkTestCases, resolveExp, slName
-                            , slTarget )
+import MonadIO.T.ReadlinkTestCases ( readExp, readlinkTestCases, resolveExp,
+                                     slName, slTarget )
 
 --------------------------------------------------------------------------------
 
 -- fileAccess ----------------------------------------------
 
 {- | file access combinations -}
-data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX
-                | ACCESS_W | ACCESS_RX
-                | ACCESS_X | ACCESS_RW
-  deriving (Eq,Show)
+data AccessMode = ACCESS_R | ACCESS_WX | ACCESS_RWX | ACCESS_W | ACCESS_RX | ACCESS_X | ACCESS_RW deriving
+  ( Eq
+  , Show
+  )
 
 {-| see `Files.fileAccess` -}
 access ∷ ∀ ε ρ μ .
@@ -146,7 +145,7 @@ writable = access ACCESS_W
 {- | Is `f` an extant writable file? -}
 _isWritableFile ∷ (MonadIO μ, FileAs γ, MonadError ε μ, HasCallStack,
                    AsIOError ε) ⇒
-                  γ → 𝕄 FStat -> μ (𝕄 𝕋)
+                  γ → 𝕄 FStat → μ (𝕄 𝕋)
 
 _isWritableFile (review _File_ → f) st =
   let rJust = return ∘ 𝕵
@@ -155,8 +154,8 @@ _isWritableFile (review _File_ → f) st =
         𝕵 stp → if Directory ≡ ftype stp
                    then rJust $ [fmt|%T is a directory|] f
                    else writable f ≫ \ case
-                          𝕹    → rJust $ [fmt|no such file %T|] f
-                          𝕵 𝕿  → return 𝕹
+                          𝕹   → rJust $ [fmt|no such file %T|] f
+                          𝕵 𝕿 → return 𝕹
                           𝕵 𝕱 → rJust $ [fmt|cannot write to %T|] f
 
 ----------------------------------------
@@ -165,7 +164,7 @@ _isWritableFile (review _File_ → f) st =
 isWritableFile ∷ ∀ ε γ μ .
                 (MonadIO μ, FileAs γ, MonadError ε μ, HasCallStack,
                  AsIOError ε) ⇒
-                 γ -> μ (𝕄 𝕋)
+                 γ → μ (𝕄 𝕋)
 
 isWritableFile (review _File_ → f) = stat f ≫ _isWritableFile f
 
@@ -184,7 +183,7 @@ isWritableFileTests =
 {- | Is `d` an extant writable directory? -}
 isWritableDir ∷ ∀ ε γ μ .
                 (MonadIO μ, DirAs γ, MonadError ε μ, HasCallStack, AsIOError ε)⇒
-                γ -> μ (𝕄 𝕋)
+                γ → μ (𝕄 𝕋)
 
 isWritableDir d =
   let rJust = return ∘ 𝕵
@@ -192,8 +191,8 @@ isWritableDir d =
         𝕹  → rJust $ [fmt|%T does not exist|] d
         𝕵 stp → if Directory ≡ ftype stp
                    then writable d ≫ \ case
-                          𝕹    → rJust $ [fmt|no such directory %T|] d
-                          𝕵 𝕿  → return 𝕹
+                          𝕹   → rJust $ [fmt|no such directory %T|] d
+                          𝕵 𝕿 → return 𝕹
                           𝕵 𝕱 → rJust $ [fmt|cannot write to %T|] d
                    else -- remove trailing '/', since the point is that d is
                         -- not a directory
@@ -236,8 +235,8 @@ fileWritable (review _File_ → fn) = do
     𝕵 st → _isWritableFile fn (𝕵 st)
     𝕹 → -- fn does not exist; does it have a writeable dir parent?
               isWritableDir (fn ⊣ parent) ≫ \ case
-                   𝕹 → return 𝕹
-                   𝕵 e  → return ∘ 𝕵 $ [fmt|%t (%T)|] e fn
+                   𝕹   → return 𝕹
+                   𝕵 e → return ∘ 𝕵 $ [fmt|%t (%T)|] e fn
 
 ----------
 
@@ -267,7 +266,10 @@ fileWritableTests =
 
 ----------------------------------------
 
-{-| fold a function over the lines of a filehandle -}
+{-| Fold a function over the lines of a filehandle.
+    `a` is the initial value of the fold; `io' is the folding function; `h` is
+    the filehandle to read.
+ -}
 fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
 fileFoldLinesH a io h = do
   eof ← liftIO $ hIsEOF h
