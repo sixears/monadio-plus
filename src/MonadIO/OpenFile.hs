@@ -13,78 +13,81 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.OpenFile
-  ( FileOpenMode(..), HEncoding( Binary, NoEncoding, UTF8 )
-  , pattern ℍ
-
-  , fileOpenMode
-
-  , appendFile, openFile
-  , readFile, readFileY, readFileUTF8Lenient, readFileUTF8LenientY
-  , withFile, writeExFile, writeFile, writeNoTruncFile
-
-  , appendFlags, readFlags, readWriteExFlags, readWriteFlags
-  , readWriteNoTruncFlags, writeExFlags, writeFlags, writeNoTruncFlags
-
+  ( FileOpenMode(..)
+  , HEncoding(Binary, NoEncoding, UTF8)
+  , appendFile
+  , appendFlags
   , devnull
-
+  , fileOpenMode
+  , openFile
+  , pattern ℍ
+  , readFile
+  , readFileUTF8Lenient
+  , readFileUTF8LenientY
+  , readFileY
+  , readFlags
+  , readWriteExFlags
+  , readWriteFlags
+  , readWriteNoTruncFlags
   , tests
-
-  )
-where
+  , withFile
+  , writeExFile
+  , writeExFlags
+  , writeFile
+  , writeFlags
+  , writeNoTruncFile
+  , writeNoTruncFlags
+  ) where
 
 import Base1T
 
 -- base --------------------------------
 
-import Data.Function       ( flip )
-import System.IO           ( IOMode( AppendMode, ReadMode, ReadWriteMode
-                                   , WriteMode ) )
-import System.Posix.Types  ( FileMode )
+import Data.Function      ( flip )
+import System.IO          ( IOMode(AppendMode, ReadMode, ReadWriteMode, WriteMode) )
+import System.Posix.Types ( FileMode )
 
 -- exceptions --------------------------
 
-import Control.Monad.Catch  ( bracket )
+import Control.Monad.Catch ( bracket )
 
 -- fpath -------------------------------
 
-import FPath.AbsFile     ( absfile )
-import FPath.AsFilePath  ( AsFilePath( filepath ) )
-import FPath.File        ( FileAs( _File_ ) )
+import FPath.AbsFile    ( absfile )
+import FPath.AsFilePath ( AsFilePath(filepath) )
+import FPath.File       ( FileAs(_File_) )
 
 -- monadio-error -----------------------
 
-import MonadError.IO.Error  ( IOError, squashNoSuchThingT )
+import MonadError.IO.Error ( IOError, squashNoSuchThingT )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( Assertion )
+import Test.Tasty.HUnit ( Assertion )
 
 -- text --------------------------------
 
-import Data.Text                 ( drop, length )
-import Data.Text.Encoding        ( decodeUtf8With )
-import Data.Text.Encoding.Error  ( lenientDecode )
+import Data.Text                ( drop, length )
+import Data.Text.Encoding       ( decodeUtf8With )
+import Data.Text.Encoding.Error ( lenientDecode )
 
 -- unix --------------------------------
 
-import System.Posix.IO     ( OpenFileFlags( OpenFileFlags, append, exclusive
-                                          , noctty, nonBlock, trunc ),
-                             OpenMode( ReadOnly, ReadWrite, WriteOnly )
-                           , fdToHandle, noctty, nonBlock, openFd
-                           )
+import System.Posix.IO ( OpenFileFlags(OpenFileFlags, append, exclusive, noctty, nonBlock, trunc),
+                         OpenMode(ReadOnly, ReadWrite, WriteOnly), cloexec,
+                         creat, directory, fdToHandle, noctty, nofollow,
+                         nonBlock, openFd, sync )
 
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
 
-import MonadIO.Base         ( chmod, unlink )
-import MonadIO.NamedHandle  ( HEncoding( Binary, NoEncoding, UTF8 )
-                            , HGetContents( hGetContents )
-                            , HWriteContents( hWriteContents )
-                            , ImpliedEncoding( impliedEncoding )
-                            , ℍ, pattern ℍ
-                            , hClose, hSetEncoding, impliedEncodingM
-                            )
+import MonadIO.Base        ( chmod, unlink )
+import MonadIO.NamedHandle ( HEncoding(Binary, NoEncoding, UTF8),
+                             HGetContents(hGetContents),
+                             HWriteContents(hWriteContents),
+                             ImpliedEncoding(impliedEncoding), ℍ, hClose,
+                             hSetEncoding, impliedEncodingM, pattern ℍ )
 
 --------------------------------------------------------------------------------
 
@@ -98,31 +101,33 @@ data FileOpenMode = FileR
                   | FileWNoTrunc (𝕄 FileMode)
                   | FileOpenMode (IOMode, OpenFileFlags, 𝕄 FileMode)
 
-fileOpenMode ∷ FileOpenMode → (IOMode, OpenFileFlags, 𝕄 FileMode)
-fileOpenMode FileR                 = (ReadMode     , readFlags        , 𝕹)
-fileOpenMode (FileRW        perms) = (ReadWriteMode, readWriteFlags   , perms)
-fileOpenMode (FileRWEx      perms) = (ReadWriteMode, readWriteExFlags , 𝕵 perms)
-fileOpenMode (FileRWNoTrunc perms) = (ReadWriteMode, writeNoTruncFlags, perms)
-fileOpenMode (FileA         perms) = (AppendMode   , appendFlags      , perms)
-fileOpenMode (FileW         perms) = (WriteMode    , writeFlags       , perms)
-fileOpenMode (FileWEx       perms) = (WriteMode    , writeExFlags     , 𝕵 perms)
-fileOpenMode (FileWNoTrunc  perms) = (WriteMode    , writeNoTruncFlags, perms)
-fileOpenMode (FileOpenMode(m,f,p)) = (m            , f                , p)
+fileOpenMode ∷ FileOpenMode → (IOMode, OpenFileFlags)
+fileOpenMode FileR                 = (ReadMode     , readFlags)
+fileOpenMode (FileRW        perms) = (ReadWriteMode, readWriteFlags { creat = perms})
+fileOpenMode (FileRWEx      perms) = (ReadWriteMode, readWriteExFlags  { creat = 𝕵 perms })
+fileOpenMode (FileRWNoTrunc perms) = (ReadWriteMode, writeNoTruncFlags { creat = perms })
+fileOpenMode (FileA         perms) = (AppendMode   , appendFlags       { creat = perms })
+fileOpenMode (FileW         perms) = (WriteMode    , writeFlags        { creat = perms })
+fileOpenMode (FileWEx       perms) = (WriteMode    , writeExFlags      { creat = 𝕵 perms })
+fileOpenMode (FileWNoTrunc  perms) = (WriteMode    , writeNoTruncFlags { creat = perms })
+fileOpenMode (FileOpenMode(m,f,p)) = (m            , f                 { creat = p })
 
 ------------------------------------------------------------
 
 {- | OpenFileFlags suitable for reading. -}
 readFlags ∷ OpenFileFlags
-readFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱,
-                            nonBlock = 𝕱, trunc = 𝕱 }
+readFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
+                          , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
+                          , creat = 𝕹, cloexec = 𝕱, directory = 𝕱, sync = 𝕱 }
 --------------------
 
 {- | OpenFileFlags suitable for read-write opens /with pre-truncation/
      (analogous to writeFlags) . -}
 readWriteFlags ∷ OpenFileFlags
-readWriteFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱
-                               , noctty = 𝕱, nonBlock = 𝕱
-                               , trunc = 𝕿
+readWriteFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
+                               , nonBlock = 𝕱, trunc = 𝕿, nofollow = 𝕱
+                               , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
+                               , sync = 𝕱
                                }
 
 --------------------
@@ -130,9 +135,10 @@ readWriteFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱
 {- | OpenFileFlags suitable for read-write opens /with pre-truncation/
      (analogous to writeFlags) . -}
 readWriteNoTruncFlags ∷ OpenFileFlags
-readWriteNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱
-                                      , noctty = 𝕱, nonBlock = 𝕱
-                                      , trunc = 𝕱
+readWriteNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
+                                      , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
+                                      , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
+                                      , sync = 𝕱
                                       }
 
 --------------------
@@ -140,9 +146,10 @@ readWriteNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱
 {- | OpenFileFlags suitable for read-write opens, with exclusive (file must
      not pre-exist (man file(2):O_EXCL). -}
 readWriteExFlags ∷ OpenFileFlags
-readWriteExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿
-                                 , noctty = 𝕱, nonBlock = 𝕱
-                                 , trunc = 𝕱
+readWriteExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿, noctty = 𝕱
+                                 , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
+                                 , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
+                                 , sync = 𝕱
                                  }
 
 --------------------
@@ -151,15 +158,17 @@ readWriteExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿
       `trunc` (man file(2):O_TRUNC) flag. -}
 writeFlags ∷ OpenFileFlags
 writeFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
-                           , nonBlock = 𝕱, trunc = 𝕿 }
+                           , nonBlock = 𝕱, trunc = 𝕿, nofollow = 𝕱
+                           , creat = 𝕹, cloexec = 𝕱, directory = 𝕱, sync = 𝕱 }
 
 --------------------
 
 {- | OpenFileFlags suitable for writing /without pre-truncating/. -}
 writeNoTruncFlags ∷ OpenFileFlags
-writeNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱
-                                  , noctty = 𝕱, nonBlock = 𝕱
-                                  , trunc = 𝕱 }
+writeNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
+                                  , nonBlock = 𝕱 , trunc = 𝕱, nofollow = 𝕱
+                                  , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
+                                  , sync = 𝕱 }
 
 --------------------
 
@@ -169,40 +178,27 @@ writeNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱
      thing.
 -}
 writeExFlags ∷ OpenFileFlags
-writeExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿, noctty = 𝕱,
-                               nonBlock = 𝕱, trunc = 𝕱 }
+writeExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿, noctty = 𝕱
+                             , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
+                             , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
+                             , sync = 𝕱 }
 
 --------------------
 
 {- | OpenFileFlags suitable for appending; this is just the `append`
      (man file(2):O_APPEND) flag. -}
 appendFlags ∷ OpenFileFlags
-appendFlags = OpenFileFlags { append = 𝕿, exclusive = 𝕱, noctty = 𝕱,
-                              nonBlock = 𝕱, trunc = 𝕱 }
+appendFlags = OpenFileFlags { append = 𝕿, exclusive = 𝕱, noctty = 𝕱
+                            , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
+                            , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
+                            , sync = 𝕱 }
 
 ----------------------------------------
-
-{-
-openFile'' ∷ (MonadIO μ, FileAs γ) ⇒
-             HEncoding → IOMode → OpenFileFlags → 𝕄 FileMode
-           → γ → μ Handle
-openFile'' enc mode flags perms (review _File_ → fn) = liftIO $ do
-  let openMode ReadMode      = ReadOnly
-      openMode WriteMode     = WriteOnly
-      openMode ReadWriteMode = ReadWrite
-      openMode AppendMode    = WriteOnly
-      flags'   = case mode of
-                   AppendMode → flags { append = 𝕿 }
-                   _          → flags
-  h ← openFd (fn ⫥ filepath) (openMode mode) perms flags' ≫ fdToHandle
-  hSetEncoding h enc
-  return h
--}
 
 openFile_ ∷ (MonadIO μ, FileAs γ) ⇒
             HEncoding → FileOpenMode → γ → μ ℍ
 openFile_ enc fomode (review _File_ → fn) = do
-  let (mode,flags,perms) = fileOpenMode fomode
+  let (mode,flags) = fileOpenMode fomode
       openMode ReadMode      = ReadOnly
       openMode WriteMode     = WriteOnly
       openMode ReadWriteMode = ReadWrite
@@ -210,9 +206,8 @@ openFile_ enc fomode (review _File_ → fn) = do
       flags'   = case mode of
                    AppendMode → flags { append = 𝕿 }
                    _          → flags
-  h ← liftIO $ openFd (fn ⫥ filepath) (openMode mode) perms flags' ≫ fdToHandle
+  h ← liftIO $ openFd (fn ⫥ filepath) (openMode mode) flags' ≫ fdToHandle
   hSetEncoding h enc
---  h ← openFile'' enc mode flags perms fn
   return $ ℍ h (toText $ fn ⫥ filepath) mode
 
 ----------------------------------------
@@ -242,7 +237,7 @@ withFile enc fomode fn io =
 readFile ∷ ∀ ε τ γ μ .
            (MonadIO μ, FileAs γ,
             AsIOError ε, MonadError ε μ, HasCallStack, HGetContents τ) ⇒
-           γ -> μ τ
+           γ → μ τ
 readFile fn = let result = withFile enc FileR fn hGetContents
                   enc    = impliedEncodingM result
                in result
@@ -250,7 +245,7 @@ readFile fn = let result = withFile enc FileR fn hGetContents
 readFileY ∷ ∀ ε τ γ μ .
             (MonadIO μ, FileAs γ,
              AsIOError ε, MonadError ε μ, HasCallStack, HGetContents τ) ⇒
-            γ -> μ (𝕄 τ)
+            γ → μ (𝕄 τ)
 readFileY = squashNoSuchThingT ∘ readFile
 
 ----------------------------------------
@@ -393,4 +388,3 @@ _testr ∷ String → ℕ → IO ExitCode
 _testr = runTestsReplay tests
 
 -- that's all, folks! ----------------------------------------------------------
-

@@ -1,51 +1,64 @@
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE UnicodeSyntax              #-}
 
 {- | User lookup (from `/etc/passwd`, etc.) with MonadIO, FPath, etc. -}
 module MonadIO.User
-  ( UserPwEnt, UserName
-  , getPwBy, getPwBy', getpwuid, getuid, getUserName, getUserName', homeDir
-  , homeDirectory, homePath, pwUID, userDir, userName, userPwEntFromUserEntry
-  )
-where
+  ( UserName
+  , UserPwEnt
+  , getPwBy
+  , getPwBy'
+  , getUserName
+  , getUserName'
+  , getpwuid
+  , getuid
+  , homeDir
+  , homeDirectory
+  , homePath
+  , pwUID
+  , userDir
+  , userName
+  , userPwEntFromUserEntry
+  ) where
 
 import Base1T
 
 -- fpath -------------------------------
 
-import FPath.AbsDir            ( AbsDir, parseAbsDirP )
-import FPath.AppendableFPath   ( AppendableFPath, AppendableFPathD
-                               , AppendableFPathF, (⫻) )
-import FPath.Error.FPathError  ( AsFPathError )
+import FPath.AbsDir           ( AbsDir, parseAbsDirP )
+import FPath.AppendableFPath  ( AppendableFPath, AppendableFPathD,
+                                AppendableFPathF, (⫻) )
+import FPath.Error.FPathError ( AsFPathError )
 
 -- lens --------------------------------
 
-import Control.Lens.Getter  ( view )
+import Control.Lens.Getter ( view )
 
 -- monaderror-io -----------------------
 
-import MonadError.IO.Error  ( squashNoSuchThing, throwUserError )
+import MonadError.IO.Error ( squashNoSuchThing, throwUserError )
 
 -- unix --------------------------------
 
-import qualified  System.Posix.User  as  PosixUser
+import System.Posix.User qualified as PosixUser
 
-import System.Posix.Types  ( UserID )
-import System.Posix.User   ( UserEntry, getRealUserID, getUserEntryForID )
+import System.Posix.Types           ( UserID )
+import System.Posix.User            ( getRealUserID, getUserEntryForID )
+import System.Posix.User.ByteString ( UserEntry )
 
 ------------------------------------------------------------
 
 -- | a user name, as found in the pw table
 newtype UserName = UserName 𝕋
-  deriving newtype (Show, Printable)
+  deriving newtype (Printable, Show)
 
 ------------------------------------------------------------
 
 {- | An entry in the pw table (e.g., `/etc/passwd`). -}
-data UserPwEnt = UserPwEnt { _userName ∷ UserName
-                           , _userDir  ∷ AbsDir
+data UserPwEnt = UserPwEnt { _userName :: UserName
+                           , _userDir  :: AbsDir
                            }
-  deriving Show
+  deriving (Show)
 
 {-| lens for homedir of `UserPwEnt` -}
 userDir ∷ Lens' UserPwEnt AbsDir
@@ -122,7 +135,7 @@ getuid = liftIO getRealUserID
 
 {- | The pw entry, if one exists, for the given user ID. -}
 getpwuid ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
-           UserID -> μ (𝕄 UserPwEnt)
+           UserID → μ (𝕄 UserPwEnt)
 getpwuid = getPwBy getUserEntryForID
 
 ----------------------------------------

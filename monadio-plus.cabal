@@ -7,7 +7,7 @@ name:                monadio-plus
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.5.3.0
+version:             2.6.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            IO operations, using MonadIO & MonadError with AsIOError
@@ -87,6 +87,7 @@ library
                     , FlexibleInstances
                     , FunctionalDependencies
                     , LambdaCase
+                    , ImportQualifiedPost
                     , InstanceSigs
                     , MultiParamTypeClasses
                     , NoImplicitPrelude
@@ -97,6 +98,7 @@ library
                     , ScopedTypeVariables
                     , TypeApplications
                     , TypeFamilies
+                    , TypeOperators
                     , UnicodeSyntax
                     , ViewPatterns
 
@@ -109,15 +111,15 @@ library
                      , filepath, lens, mtl, process, safe, tasty-hunit
                      , temporary, text, text-printer, unix
 
-                     , base1t          >= 0.0.5.0
-                     , containers-plus >= 0.0.10.1
-                     , env-plus        >= 1.0.7.0
-                     , exited          >= 1.0.4.1
-                     , fpath           >= 1.3.2.0
-                     , fstat           >= 1.0.2.0
-                     , monaderror-io   >= 1.2.5.0
-                     , natural         >= 0.0.1.0
-                     , tasty-plus      >= 1.5.1.1
+                     , base1t          >= 0.0.6.0
+                     , containers-plus >= 0.0.10.40
+                     , env-plus        >= 1.0.9.0
+                     , exited          >= 1.0.4.23
+                     , fpath           >= 1.3.5.0
+                     , fstat           >= 1.0.2.26
+                     , monaderror-io   >= 1.2.6.0
+                     , natural         >= 0.0.5.0
+                     , tasty-plus      >= 1.5.2.24
 
   -- Directories containing source files.
   hs-source-dirs:      src
