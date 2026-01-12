@@ -1,3 +1,4 @@
+{-| An IO Handle (fd, etc.) with an associated name & encoding -}
 module MonadIO.NamedHandle
   ( HasNamedHandle( handle, hname, hiomode ), HEncoding(..)
   , HGetContents( hGetContents )
@@ -27,6 +28,10 @@ import qualified Data.ByteString  as  BS
 
 import Data.ByteString  ( ByteString )
 
+-- data-textual ------------------------
+
+import qualified Text.Printer  as  P
+
 -- lens --------------------------------
 
 import Control.Lens.Getter  ( view )
@@ -39,16 +44,21 @@ import Data.Text  ( lines )
 
 --------------------------------------------------------------------------------
 
+{-| A Handle (`System.IO.Handle`), along with its name and IOMode -}
 data NamedHandle = NamedHandle { _handle  ∷ Handle
                                , _hname   ∷ 𝕋
                                , _hiomode ∷ IOMode
                                }
+  deriving Show
 
+{-| unicode alias for `NamedHandle` -}
 type ℍ = NamedHandle
+{-| unicode alias for `NamedHandle` -}
 pattern ℍ ∷ Handle → 𝕋 → IOMode → ℍ
 pattern ℍ h n i ← NamedHandle h n i
   where ℍ h n i = NamedHandle h n i
 
+{-| things that have a `NamedHandle` -}
 class HasNamedHandle α where
   hname   ∷ Lens' α 𝕋
   handle  ∷ Lens' α Handle
@@ -59,14 +69,31 @@ instance HasNamedHandle ℍ where
   handle  = lens _handle  (\ h l → h { _handle  = l })
   hiomode = lens _hiomode (\ h i → h { _hiomode = i })
 
+instance Printable NamedHandle where
+  print h = P.text $ [fmt|«ℍ: %t ‖ %w»|] (_hname h) (_hiomode h)
+
 ----------------------------------------
 
 type 𝔹𝕊 = ByteString
 
-data HEncoding = UTF8 | Binary | NoEncoding
+{-| data auto-conversion setting -}
+data HEncoding = UTF8        -- ^ the UTF-8 Unicode encoding
+               | Binary      -- ^ An encoding in which Unicode code points are
+                             --   translated to bytes by taking the code point
+                             --   modulo 256. When decoding, bytes are translated
+                             --   directly into the equivalent code point.
+                             --
+                             --   This encoding never fails in either direction.
+                             --   However, encoding discards information, so
+                             --   encode followed by decode is not the identity.
+               | NoEncoding  -- ^ The encoding of the current locale.
+                             --   This is the initial locale encoding: if it has
+                             --   been subsequently changed by setLocaleEncoding
+                             --   this value will not reflect that change.
 
 ----------------------------------------
 
+{-| close the `System.IO.Handle` underlying a `NamedHandle` -}
 hClose ∷ MonadIO μ ⇒ ℍ → μ ()
 hClose = liftIO ∘ System.IO.hClose ∘ view handle
 
@@ -77,6 +104,9 @@ hSetNewlineMode h = liftIO ∘ System.IO.hSetNewlineMode h
 
 ----------------------------------------
 
+{-| set the filehandle encoding; `UTF8` for utf8 parsing + native newlines;
+    `Binary` for char8 with no newline translation; `NoEncoding` has no impact
+-}
 hSetEncoding ∷ MonadIO μ ⇒ Handle → HEncoding → μ ()
 hSetEncoding h UTF8 = liftIO $ do
   System.IO.hSetEncoding h utf8
@@ -88,6 +118,9 @@ hSetEncoding _ NoEncoding = return ()
 
 ------------------------------------------------------------
 
+{-| types that imply a natural file encoding; e.g., 𝕋 implies utf8 encoding,
+    whereas 𝔹𝕊 implies binary.
+-}
 class ImpliedEncoding α where
   impliedEncodingM ∷ η α → HEncoding
   impliedEncoding ∷ α → HEncoding
@@ -117,6 +150,7 @@ instance ToHandle Handle where
 instance ToHandle ℍ where
   toHandle = view handle
 
+{-| things that we can call `hGetContents` on (must have an `ImpliedEncoding`) -}
 class ImpliedEncoding α ⇒ HGetContents α where
   hGetContents ∷ (MonadIO μ, ToHandle δ) ⇒ δ → μ α
 
@@ -133,6 +167,8 @@ instance HGetContents 𝔹𝕊 where
 
 ------------------------------------------------------------
 
+{-| things that we can call `hWriteContents` on (must have an `ImpliedEncoding`)
+ -}
 class ImpliedEncoding α ⇒ HWriteContents α where
   {- | Write some contents to a file with the appropriate encoding.  *Note that
        the handle setting on the encoding is left in place*. -}
@@ -148,12 +184,15 @@ instance HWriteContents 𝔹𝕊 where
 
 ----------------------------------------
 
+{-| A named read-only handle for stdin -}
 stdin  ∷ ℍ
 stdin  = ℍ System.IO.stdin "<STDIN>" ReadMode
 
+{-| A named writable handle for stdout -}
 stdout ∷ ℍ
 stdout = ℍ System.IO.stdout "<STDOUT>" WriteMode
 
+{-| A named writable handle for stderr -}
 stderr ∷ ℍ
 stderr = ℍ System.IO.stderr "<STDERR>" WriteMode
 

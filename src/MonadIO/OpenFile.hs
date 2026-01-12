@@ -43,8 +43,8 @@ import Base1T
 
 -- base --------------------------------
 
-import Data.Function      ( flip )
-import System.IO          ( IOMode(AppendMode, ReadMode, ReadWriteMode, WriteMode) )
+import System.IO          ( IOMode( AppendMode, ReadMode, ReadWriteMode,
+                                    WriteMode ) )
 import System.Posix.Types ( FileMode )
 
 -- exceptions --------------------------
@@ -104,11 +104,11 @@ data FileOpenMode = FileR
 fileOpenMode ∷ FileOpenMode → (IOMode, OpenFileFlags)
 fileOpenMode FileR                 = (ReadMode     , readFlags)
 fileOpenMode (FileRW        perms) = (ReadWriteMode, readWriteFlags { creat = perms})
-fileOpenMode (FileRWEx      perms) = (ReadWriteMode, readWriteExFlags  { creat = 𝕵 perms })
+fileOpenMode (FileRWEx      perms) = (ReadWriteMode, readWriteExFlags  { creat = 𝓙 perms })
 fileOpenMode (FileRWNoTrunc perms) = (ReadWriteMode, writeNoTruncFlags { creat = perms })
 fileOpenMode (FileA         perms) = (AppendMode   , appendFlags       { creat = perms })
 fileOpenMode (FileW         perms) = (WriteMode    , writeFlags        { creat = perms })
-fileOpenMode (FileWEx       perms) = (WriteMode    , writeExFlags      { creat = 𝕵 perms })
+fileOpenMode (FileWEx       perms) = (WriteMode    , writeExFlags      { creat = 𝓙 perms })
 fileOpenMode (FileWNoTrunc  perms) = (WriteMode    , writeNoTruncFlags { creat = perms })
 fileOpenMode (FileOpenMode(m,f,p)) = (m            , f                 { creat = p })
 
@@ -116,18 +116,18 @@ fileOpenMode (FileOpenMode(m,f,p)) = (m            , f                 { creat =
 
 {- | OpenFileFlags suitable for reading. -}
 readFlags ∷ OpenFileFlags
-readFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
-                          , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
-                          , creat = 𝕹, cloexec = 𝕱, directory = 𝕱, sync = 𝕱 }
+readFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓕, noctty = 𝓕
+                          , nonBlock = 𝓕, trunc = 𝓕, nofollow = 𝓕
+                          , creat = 𝓝, cloexec = 𝓕, directory = 𝓕, sync = 𝓕 }
 --------------------
 
 {- | OpenFileFlags suitable for read-write opens /with pre-truncation/
      (analogous to writeFlags) . -}
 readWriteFlags ∷ OpenFileFlags
-readWriteFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
-                               , nonBlock = 𝕱, trunc = 𝕿, nofollow = 𝕱
-                               , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
-                               , sync = 𝕱
+readWriteFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓕, noctty = 𝓕
+                               , nonBlock = 𝓕, trunc = 𝓣, nofollow = 𝓕
+                               , creat = 𝓝, cloexec = 𝓕, directory = 𝓕
+                               , sync = 𝓕
                                }
 
 --------------------
@@ -135,10 +135,10 @@ readWriteFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
 {- | OpenFileFlags suitable for read-write opens /with pre-truncation/
      (analogous to writeFlags) . -}
 readWriteNoTruncFlags ∷ OpenFileFlags
-readWriteNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
-                                      , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
-                                      , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
-                                      , sync = 𝕱
+readWriteNoTruncFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓕, noctty = 𝓕
+                                      , nonBlock = 𝓕, trunc = 𝓕, nofollow = 𝓕
+                                      , creat = 𝓝, cloexec = 𝓕, directory = 𝓕
+                                      , sync = 𝓕
                                       }
 
 --------------------
@@ -146,10 +146,10 @@ readWriteNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty 
 {- | OpenFileFlags suitable for read-write opens, with exclusive (file must
      not pre-exist (man file(2):O_EXCL). -}
 readWriteExFlags ∷ OpenFileFlags
-readWriteExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿, noctty = 𝕱
-                                 , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
-                                 , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
-                                 , sync = 𝕱
+readWriteExFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓣, noctty = 𝓕
+                                 , nonBlock = 𝓕, trunc = 𝓕, nofollow = 𝓕
+                                 , creat = 𝓝, cloexec = 𝓕, directory = 𝓕
+                                 , sync = 𝓕
                                  }
 
 --------------------
@@ -157,18 +157,18 @@ readWriteExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿, noctty = �
 {- | OpenFileFlags suitable for writing /with pre-truncation/; this is just the
       `trunc` (man file(2):O_TRUNC) flag. -}
 writeFlags ∷ OpenFileFlags
-writeFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
-                           , nonBlock = 𝕱, trunc = 𝕿, nofollow = 𝕱
-                           , creat = 𝕹, cloexec = 𝕱, directory = 𝕱, sync = 𝕱 }
+writeFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓕, noctty = 𝓕
+                           , nonBlock = 𝓕, trunc = 𝓣, nofollow = 𝓕
+                           , creat = 𝓝, cloexec = 𝓕, directory = 𝓕, sync = 𝓕 }
 
 --------------------
 
 {- | OpenFileFlags suitable for writing /without pre-truncating/. -}
 writeNoTruncFlags ∷ OpenFileFlags
-writeNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = 𝕱
-                                  , nonBlock = 𝕱 , trunc = 𝕱, nofollow = 𝕱
-                                  , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
-                                  , sync = 𝕱 }
+writeNoTruncFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓕, noctty = 𝓕
+                                  , nonBlock = 𝓕 , trunc = 𝓕, nofollow = 𝓕
+                                  , creat = 𝓝, cloexec = 𝓕, directory = 𝓕
+                                  , sync = 𝓕 }
 
 --------------------
 
@@ -178,20 +178,20 @@ writeNoTruncFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕱, noctty = �
      thing.
 -}
 writeExFlags ∷ OpenFileFlags
-writeExFlags = OpenFileFlags { append = 𝕱, exclusive = 𝕿, noctty = 𝕱
-                             , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
-                             , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
-                             , sync = 𝕱 }
+writeExFlags = OpenFileFlags { append = 𝓕, exclusive = 𝓣, noctty = 𝓕
+                             , nonBlock = 𝓕, trunc = 𝓕, nofollow = 𝓕
+                             , creat = 𝓝, cloexec = 𝓕, directory = 𝓕
+                             , sync = 𝓕 }
 
 --------------------
 
 {- | OpenFileFlags suitable for appending; this is just the `append`
      (man file(2):O_APPEND) flag. -}
 appendFlags ∷ OpenFileFlags
-appendFlags = OpenFileFlags { append = 𝕿, exclusive = 𝕱, noctty = 𝕱
-                            , nonBlock = 𝕱, trunc = 𝕱, nofollow = 𝕱
-                            , creat = 𝕹, cloexec = 𝕱, directory = 𝕱
-                            , sync = 𝕱 }
+appendFlags = OpenFileFlags { append = 𝓣, exclusive = 𝓕, noctty = 𝓕
+                            , nonBlock = 𝓕, trunc = 𝓕, nofollow = 𝓕
+                            , creat = 𝓝, cloexec = 𝓕, directory = 𝓕
+                            , sync = 𝓕 }
 
 ----------------------------------------
 
@@ -204,7 +204,7 @@ openFile_ enc fomode (review _File_ → fn) = do
       openMode ReadWriteMode = ReadWrite
       openMode AppendMode    = WriteOnly
       flags'   = case mode of
-                   AppendMode → flags { append = 𝕿 }
+                   AppendMode → flags { append = 𝓣 }
                    _          → flags
   h ← liftIO $ openFd (fn ⫥ filepath) (openMode mode) flags' ≫ fdToHandle
   hSetEncoding h enc
@@ -220,7 +220,7 @@ openFile enc fomode fn = asIOError $ openFile_ enc fomode fn
 
 {- | An open RW handle to /dev/null. -}
 devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ ℍ
-devnull = openFile Binary (FileRWNoTrunc 𝕹) [absfile|/dev/null|]
+devnull = openFile Binary (FileRWNoTrunc 𝓝) [absfile|/dev/null|]
 
 ----------------------------------------
 
@@ -251,9 +251,9 @@ readFileY = squashNoSuchThingT ∘ readFile
 ----------------------------------------
 
 {- | Write a file in an implied encoding (see `impliedEncoding`).
-     `perms`, if not 𝕹, will be used to create the file if it doesn't
+     `perms`, if not 𝓝, will be used to create the file if it doesn't
      exist.  If it does exist, `perms` has no impact (use `chmod` to really
-     force it).  If `perms is 𝕹, and the file does not exist, then an
+     force it).  If `perms is 𝓝, and the file does not exist, then an
      exception shall be thrown.
  -}
 writeFile ∷ ∀ ε τ γ μ .
@@ -283,9 +283,9 @@ writeExFile perms fn t =
 
 ----------------------------------------
 
-{- | Append to a file.  `perms`, if not 𝕹, will be used to create the file
+{- | Append to a file.  `perms`, if not 𝓝, will be used to create the file
      if it doesn't exist.  If it does exist, `perms` has no impact (use `chmod`
-     to really force it).  If `perms is 𝕹, and the file does not exist,
+     to really force it).  If `perms is 𝓝, and the file does not exist,
      then an exception shall be thrown.
  -}
 appendFile ∷ ∀ ε τ γ μ .
@@ -330,21 +330,21 @@ withFileTests =
         testCase "appendFileUTF8 fail" $ appnd perms fn t ≫ assertIsLeft
    in testGroup "withFile"
                 [ -- WRITE NEW FILE NO PERMS, CHECK FOR FAILURE
-                  testWriteFail 𝕹 f txt
-                , testWrite (𝕵 0o600) f txt
+                  testWriteFail 𝓝 f txt
+                , testWrite (𝓙 0o600) f txt
                 , testRead f txt
                 -- re-write, to check for lack of auto-truncation
-                , testWriteNoTrunc (𝕵 0o600) f t2
+                , testWriteNoTrunc (𝓙 0o600) f t2
                 , testRead f (t2 ⊕ drop (length t2) txt)
-                , testAppend (𝕵 0o600) f txt
+                , testAppend (𝓙 0o600) f txt
                 , testRead f (t2 ⊕ drop (length t2) txt ⊕ txt)
                 -- DELETE
                 , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
                 -- TEST READ FAIL
                 , testReadFail f
                 -- APPEND NEW FAIL
-                , testAppendFail 𝕹 f txt
-                , testAppend (𝕵 0o000) f txt
+                , testAppendFail 𝓝 f txt
+                , testAppend (𝓙 0o000) f txt
                 -- TEST READ FAIL
                 , testReadFail f
                 , testCase "chmod" $ ѥ (chmod 0400 f) ≫ assertIsRight

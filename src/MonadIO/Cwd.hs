@@ -94,13 +94,13 @@ getCwd' = do
 
 {- | Get the pwd; in case of error, return `Nothing`. -}
 getCwdY ∷ ∀ μ . MonadIO μ ⇒ μ (𝕄 AbsDir)
-getCwdY = either (const 𝕹) 𝕵 ⊳ (ѥ @FPathIOError $ getCwd)
+getCwdY = either (const 𝓝) 𝓙 ⊳ (ѥ @FPathIOError $ getCwd)
 
 ----------------------------------------
 
 {- | Get the pwd; in case of error, return `Nothing`; uses `getCwd'`. -}
 getCwd'Y ∷ ∀ μ . MonadIO μ ⇒ μ (𝕄 AbsDir)
-getCwd'Y = either (const 𝕹) 𝕵 ⊳ (ѥ @FPathIOError $ getCwd')
+getCwd'Y = either (const 𝓝) 𝓙 ⊳ (ѥ @FPathIOError $ getCwd')
 
 --------------------
 
@@ -111,7 +111,7 @@ getCwdTests =
 
       inTmp = inSystemTempDirectory "MonadIO.Cwd.getCwdTests"
    in testGroup "getCwd" [
-        testCase "getCwd" $ inTmp $ \ d → getCwd_ ≫ \ cwd → 𝕽 d @=? cwd
+        testCase "getCwd" $ inTmp $ \ d → getCwd_ ≫ \ cwd → 𝓡 d @=? cwd
       ]
 
 --------------------------------------------------------------------------------

@@ -154,7 +154,7 @@ getUserName' ∷ (MonadIO μ,
 getUserName' = do
   uid ← getuid
   getpwuid uid ≫ \ case
-    𝕵 user_pw_ent → return (user_pw_ent ⊣ userName)
-    𝕹             → throwUserError $ [fmtT|no passwd entry found for %d|] uid
+    𝓙 user_pw_ent → return (user_pw_ent ⊣ userName)
+    𝓝             → throwUserError $ [fmtT|no passwd entry found for %d|] uid
 
 -- that's all, folks! ----------------------------------------------------------

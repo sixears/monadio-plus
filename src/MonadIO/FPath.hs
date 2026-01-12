@@ -192,8 +192,8 @@ fpInner f = fpInner' (const ∘ const f)
 -}
 fpInner' ∷ (𝔹 → 𝔹 → FilePath → FilePath) → FilePath → FilePath
 fpInner' _ ('/':xs) | "" ≡ filter (≢'/') xs = "/"
-fpInner' f fp = let is_abs = 𝕵 '/' ≡ head fp
-                    is_dir = 𝕵 '/' ≡ last fp
+fpInner' f fp = let is_abs = 𝓙 '/' ≡ head fp
+                    is_dir = 𝓙 '/' ≡ last fp
                     pfx = if is_abs then "/" else ""
                     sfx = if is_dir then "/" else ""
                     fp' = dropWhile (≡'/') $ dropWhileEnd (≡'/') fp

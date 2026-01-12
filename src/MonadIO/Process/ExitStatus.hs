@@ -52,8 +52,8 @@ instance ToExitCode ExitStatus where
   toExitCode (ExitSig _) = ExitFailure 255
 
 exitOkay ∷ HasExitStatus ev ⇒ ev → 𝔹
-exitOkay (view exitVal → ExitVal 0) = 𝕿
-exitOkay _                          = 𝕱
+exitOkay (view exitVal → ExitVal 0) = 𝓣
+exitOkay _                          = 𝓕
 
 evOK       ∷ ExitStatus
 evOK       =  ExitVal 0
@@ -68,8 +68,8 @@ evExecFail ∷ ExitStatus
 evExecFail = ExitVal 254
 
 exitWasSignalled ∷ ExitStatus → 𝔹
-exitWasSignalled (ExitSig _) = 𝕿
-exitWasSignalled _           = 𝕱
+exitWasSignalled (ExitSig _) = 𝓣
+exitWasSignalled _           = 𝓕
 
 instance Printable ExitStatus where
   print (ExitVal ev) = P.text $ [fmt|Execution exit %d|] ev

@@ -1,3 +1,8 @@
+2.6.1.0 2026-01-12
+==================
+- Add Show, Printable instances of NamedHandle
+- Update unicode patterns from 𝕿 → 𝓣, et al.
+
 2.6.0.0 2025-03-10
 ==================
 - use unix-2.8.6.0

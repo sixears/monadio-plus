@@ -50,20 +50,20 @@ data ReadlinkTestCase = ReadlinkTestCase { -- name of the symlink relative to
 readlinkTestCases ∷ [ReadlinkTestCase]
 readlinkTestCases =
   let absD = const ∘ AbsD
-      absD' = const ∘ 𝕵 ∘ AbsD
+      absD' = const ∘ 𝓙 ∘ AbsD
       absF = const ∘ AbsF
-      absF' = const ∘ 𝕵 ∘ AbsF
+      absF' = const ∘ 𝓙 ∘ AbsF
       relD ∷ RelDir → AbsDir → Abs
       relD f = \ t → AbsD $ t ⫻ f
       relD' ∷ RelDir → AbsDir → 𝕄 Abs
-      relD' f = \ t → 𝕵 ∘ AbsD $ t ⫻ f
+      relD' f = \ t → 𝓙 ∘ AbsD $ t ⫻ f
       relDp ∷ RelDir → AbsDir → Abs
       relDp d = \ t → AbsD $ (t ⊣ dirname) ⫻ d
       relF ∷ RelFile → AbsDir → Abs
       relF f = \ t → AbsF $ t ⫻ f
       relFp ∷ RelFile → AbsDir → Abs
       relFp f = \ t → AbsF $ (t ⊣ dirname) ⫻ f
-   in (((\ (a,b,c) → ReadlinkTestCase a b c (𝕵 ∘ c)) ⊳
+   in (((\ (a,b,c) → ReadlinkTestCase a b c (𝓙 ∘ c)) ⊳
         [ ([relfile|dangle-relfile|] , "nonesuch"     , relF [relfile|nonesuch|])
         , ([relfile|dangle-reldir|]  , "nonesuch/"    , relD [reldir|nonesuch/|])
         , ([relfile|dangle-absfile|] , "/nonesuch"    , absF [absfile|/nonesuch|])
@@ -81,7 +81,7 @@ readlinkTestCases =
         -- for each of the below, the
         -- fully-resolved target ≡ the single-resolved target
 
-     ⊕ ((\ (a,b,c) → ReadlinkTestCase a b c (𝕵 ∘ c)) ⊳
+     ⊕ ((\ (a,b,c) → ReadlinkTestCase a b c (𝓙 ∘ c)) ⊳
        [ ([relfile|slash|]          , "/"            , absD root)
        , ([relfile|slashes|]        , "///"          , absD root)
        , ([relfile|etc|]            , "/etc/"        , absD [absdir|/etc/|])
@@ -109,7 +109,7 @@ readlinkTestCases =
      ⊕ [
         ReadlinkTestCase [relfile|dangle-relfile2|] "dangle-relfile"
                          (relF [relfile|dangle-relfile|])
-                         (𝕵 ∘ relF ([relfile|nonesuch|]))
+                         (𝓙 ∘ relF ([relfile|nonesuch|]))
         -- The target of a symlink can have a '/' at the end; but a symlink
         -- name cannot have a '/' at the end, because a symlink is a file not a
         -- directory.  So the filepath target cannot usefully have a trailing
@@ -117,13 +117,13 @@ readlinkTestCases =
         -- resolvelink.
       , ReadlinkTestCase [relfile|dangle-reldir2|]  "dangle-reldir/"
                          (relD [reldir|dangle-reldir/|])
-                         (𝕵 ∘ relD [reldir|dangle-reldir/nonesuch/|])
+                         (𝓙 ∘ relD [reldir|dangle-reldir/nonesuch/|])
       , ReadlinkTestCase [relfile|dangle-absfile2|] "dangle-absfile"
                          (relF [relfile|dangle-absfile|])
-                         (const ∘ 𝕵 $ AbsF [absfile|/nonesuch|])
+                         (const ∘ 𝓙 $ AbsF [absfile|/nonesuch|])
       , ReadlinkTestCase [relfile|dangle-absdir2|] "dangle-absdir"
                          (relF [relfile|dangle-absdir|])
-                         (const ∘ 𝕵 $ AbsD [absdir|/nonesuch/|])
+                         (const ∘ 𝓙 $ AbsD [absdir|/nonesuch/|])
       -- resolvelink should identify these as directories
       , ReadlinkTestCase [relfile|etcf|] "/etc" (absF [absfile|/etc|])
                          (absD' [absdir|/etc/|])

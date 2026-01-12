@@ -23,16 +23,16 @@ class ToMaybeText τ where
   toMaybeText ∷ τ → 𝕄 𝕋
 
 instance ToMaybeText () where
-  toMaybeText = const 𝕹
+  toMaybeText = const 𝓝
 
 instance ToMaybeText 𝕋 where
-  toMaybeText = 𝕵
+  toMaybeText = 𝓙
 
 instance ToMaybeText [𝕋] where
-  toMaybeText = 𝕵 ∘ unlines
+  toMaybeText = 𝓙 ∘ unlines
 
 instance ToMaybeText 𝔹𝕊 where
-  toMaybeText = 𝕵 ∘ decodeUtf8
+  toMaybeText = 𝓙 ∘ decodeUtf8
 
 ------------------------------------------------------------
 
@@ -45,18 +45,18 @@ class ToMaybeTexts ω where
 ----------
 
 instance ToMaybeTexts () where
-  toMaybeTexts _ = (𝕹, 𝕹)
+  toMaybeTexts _ = (𝓝, 𝓝)
 
 ----------
 
 instance ToMaybeTexts 𝕋 where
-  toMaybeTexts t = (𝕵 t, 𝕹)
+  toMaybeTexts t = (𝓙 t, 𝓝)
 
 instance ToMaybeTexts [𝕋] where
-  toMaybeTexts t = (𝕵 $ unlines t, 𝕹)
+  toMaybeTexts t = (𝓙 $ unlines t, 𝓝)
 
 instance ToMaybeTexts 𝔹𝕊 where
-  toMaybeTexts t = (𝕵 $ decodeUtf8 t, 𝕹)
+  toMaybeTexts t = (𝓙 $ decodeUtf8 t, 𝓝)
 
 ----------
 

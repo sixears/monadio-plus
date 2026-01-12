@@ -68,11 +68,11 @@ data ProcErrorX = PEX_FPATH_IO_ERROR   FPathIOError
 
 _PEX_FPATH_IO_ERROR ∷ Prism' ProcErrorX FPathIOError
 _PEX_FPATH_IO_ERROR = prism' (\ e → PEX_FPATH_IO_ERROR e)
-                            (\ case PEX_FPATH_IO_ERROR e → 𝕵 e; _ → 𝕹)
+                            (\ case PEX_FPATH_IO_ERROR e → 𝓙 e; _ → 𝓝)
 
 _PEX_CREATEPROC_ERROR ∷ Prism' ProcErrorX CreateProcError
 _PEX_CREATEPROC_ERROR = prism' (\ e → PEX_CREATEPROC_ERROR e)
-                            (\ case PEX_CREATEPROC_ERROR e → 𝕵 e; _ → 𝕹)
+                            (\ case PEX_CREATEPROC_ERROR e → 𝓙 e; _ → 𝓝)
 
 instance Exception ProcErrorX
 
@@ -109,11 +109,11 @@ data ProcError = PE_PEX_ERROR        ProcErrorX
 
 _PE_PEX_ERROR ∷ Prism' ProcError ProcErrorX
 _PE_PEX_ERROR = prism' (\ e → PE_PEX_ERROR e)
-                       (\ case PE_PEX_ERROR e → 𝕵 e; _ → 𝕹)
+                       (\ case PE_PEX_ERROR e → 𝓙 e; _ → 𝓝)
 
 _PE_PROC_EXIT_ERROR ∷ Prism' ProcError ProcExitError
 _PE_PROC_EXIT_ERROR = prism' (\ e → PE_PROC_EXIT_ERROR e)
-                             (\ case PE_PROC_EXIT_ERROR e → 𝕵 e; _ → 𝕹)
+                             (\ case PE_PROC_EXIT_ERROR e → 𝓙 e; _ → 𝓝)
 
 instance Exception ProcError
 

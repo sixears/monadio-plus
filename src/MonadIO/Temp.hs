@@ -23,7 +23,6 @@ import Base1T
 import qualified  System.IO
 
 import Control.Monad          ( (>=>) )
-import Data.Function          ( flip )
 import Data.Functor.Identity  ( Identity( Identity ), runIdentity )
 import Data.List              ( dropWhileEnd )
 import Data.Maybe             ( fromJust )

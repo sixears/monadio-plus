@@ -59,8 +59,8 @@ data FExists = FExists | NoFExists
 
 {- | Does this 𝕄 FStat refer to a directory? -}
 mIsDir ∷ 𝕄 FStat → 𝔹
-mIsDir (fmap ftype → 𝕵 Directory) = 𝕿
-mIsDir _                          = 𝕱
+mIsDir (fmap ftype → 𝓙 Directory) = 𝓣
+mIsDir _                          = 𝓕
 
 fexists_ ∷ ∀ ρ η . (Monad η, AsFilePath ρ) ⇒
            𝔹 → (ρ → η (𝕄 FStat)) → ρ → η FExists
@@ -79,13 +79,13 @@ fexists_ checkDir g f = bool NoFExists FExists ⊳ do
  -}
 fexists ∷ ∀ ε τ μ .
           (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒ τ → μ FExists
-fexists = fexists_ 𝕿 stat
+fexists = fexists_ 𝓣 stat
 
 {- | Like `fexists`; but for symlinks, checks the symlink rather than
      dereferencing; so dangling symlinks are considered to exist. -}
 lfexists ∷ ∀ ε τ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
            τ → μ FExists
-lfexists = fexists_ 𝕿 lstat
+lfexists = fexists_ 𝓣 lstat
 
 ----------
 
@@ -114,11 +114,11 @@ fexistsTests =
  -}
 fexists' ∷ ∀ ε τ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
            τ → μ FExists
-fexists' = fexists_ 𝕱 stat
+fexists' = fexists_ 𝓕 stat
 
 lfexists' ∷ ∀ ε τ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, AsFilePath τ) ⇒
             τ → μ FExists
-lfexists' = fexists_ 𝕱 lstat
+lfexists' = fexists_ 𝓕 lstat
 
 ----------
 
@@ -191,12 +191,12 @@ statTests =
           f (ѥ @IOError (stat input)) ≫ assertRight (expect @=?)
       isDirectory = ((Directory ≡) ∘ ftype)
    in testGroup "stat"
-                [ testStat (𝕵 𝕿) [absdir|/etc/|]               (isDirectory ⊳⊳⊳)
-                , testStat (𝕵 𝕱) [absfile|/etc/passwd|]        (isDirectory ⊳⊳⊳)
-                , testStat (𝕵 𝕱) [absdir|/etc/passwd/|]        (isDirectory ⊳⊳⊳)
-                , testStat 𝕹     [absfile|/nonsuch|]           (isDirectory ⊳⊳⊳)
-                , testStat 𝕹     [absfile|/etc/passwd/nonsuch|](isDirectory ⊳⊳⊳)
-                , testStat 𝕹     [absdir|/nonsuch/|]           (isDirectory ⊳⊳⊳)
+                [ testStat (𝓙 𝓣) [absdir|/etc/|]               (isDirectory ⊳⊳⊳)
+                , testStat (𝓙 𝓕) [absfile|/etc/passwd|]        (isDirectory ⊳⊳⊳)
+                , testStat (𝓙 𝓕) [absdir|/etc/passwd/|]        (isDirectory ⊳⊳⊳)
+                , testStat 𝓝     [absfile|/nonsuch|]           (isDirectory ⊳⊳⊳)
+                , testStat 𝓝     [absfile|/etc/passwd/nonsuch|](isDirectory ⊳⊳⊳)
+                , testStat 𝓝     [absdir|/nonsuch/|]           (isDirectory ⊳⊳⊳)
                 ]
 
 ----------------------------------------
@@ -238,14 +238,14 @@ extantP f = extantP' f ≫ eFromMaybe (userE $ [fmt|'%T' has no extant parent|] 
  -}
 isDir ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
          ρ → μ 𝔹
-isDir = fmap (maybe 𝕱 (≡Directory) ∘ fmap ftype) ∘ stat
+isDir = fmap (maybe 𝓕 (≡Directory) ∘ fmap ftype) ∘ stat
 
 {- | Find if a path is a directory, by checking the filesystem.  If the path
      is a , then `False` is returned.
  -}
 lisDir ∷ ∀ ε ρ μ . (MonadIO μ, AsFilePath ρ, AsIOError ε, MonadError ε μ) ⇒
          ρ → μ 𝔹
-lisDir = fmap (maybe 𝕱 (≡Directory) ∘ fmap ftype) ∘ lstat
+lisDir = fmap (maybe 𝓕 (≡Directory) ∘ fmap ftype) ∘ lstat
 
 ----------------------------------------
 
@@ -255,8 +255,8 @@ pathTypes ∷ ∀ ε ρ . (ToDir ρ) ⇒
             (ρ, 𝔼 ε FStat)
           → ([(ρ,FStat)],[(DirType ρ,FStat)],[(ρ,ε)])
           → ([(ρ,FStat)],[(DirType ρ,FStat)],[(ρ,ε)])
-pathTypes (r, 𝕷 e) (fs, ds, es) = (fs, ds, (r,e) : es)
-pathTypes (r, 𝕽 st) (fs,ds,es) = case ftype st of
+pathTypes (r, 𝓛 e) (fs, ds, es) = (fs, ds, (r,e) : es)
+pathTypes (r, 𝓡 st) (fs,ds,es) = case ftype st of
                                       Directory → (fs,(toDir r,st):ds,es)
                                       _         → ((r,st):fs,ds,es)
 

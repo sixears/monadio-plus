@@ -58,7 +58,7 @@ exitCode (ExitFailure i) | i > 0     = ExitVal $ fromIntegral i
 
 ----------------------------------------
 
-{- | Get pid from a `ProcessHandle`.  Returns `𝕹` for a closed `ProcessHandle`.
+{- | Get pid from a `ProcessHandle`.  Returns `𝓝` for a closed `ProcessHandle`.
  -}
 getPid ∷ MonadIO μ ⇒ ProcessHandle → μ (𝕄 Pid)
 getPid = (fmap Pid) ⩺ liftIO ∘  System.Process.getPid
@@ -70,8 +70,8 @@ getPid = (fmap Pid) ⩺ liftIO ∘  System.Process.getPid
 getPid' ∷ MonadIO μ ⇒ ProcessHandle → μ Pid
 getPid' h =
   getPid h ≫ \ case
-    𝕹   → ioThrow ("failed to getPid from handle; already closed" ∷ 𝕋)
-    𝕵 p → return p
+    𝓝   → ioThrow ("failed to getPid from handle; already closed" ∷ 𝕋)
+    𝓙 p → return p
 
 ----------------------------------------
 
@@ -187,7 +187,7 @@ throwSig (einfo, w) =
       cspec = einfo ⊣ cmdSpec
       p     = einfo ⊣ pid
    in if exitWasSignalled exVal
-      then throwError $ asProcExitError cspec p exVal (𝕹,𝕹)
+      then throwError $ asProcExitError cspec p exVal (𝓝,𝓝)
       else return (einfo,w)
 
 ----------

@@ -76,15 +76,15 @@ createProc_ cp = do
                              , SysProc.create_group  =
                                    cp ⊣ createGroup == CreateGroup
 
-                             , SysProc.close_fds     = 𝕿
-                             , SysProc.delegate_ctlc = 𝕿
-                             , SysProc.new_session   = 𝕱
-                             , SysProc.child_group   = 𝕹
-                             , SysProc.child_user    = 𝕹
+                             , SysProc.close_fds     = 𝓣
+                             , SysProc.delegate_ctlc = 𝓣
+                             , SysProc.new_session   = 𝓕
+                             , SysProc.child_group   = 𝓝
+                             , SysProc.child_user    = 𝓝
 
-                             , SysProc.detach_console     = 𝕱 -- windoze only
-                             , SysProc.create_new_console = 𝕱 -- windoze only
-                             , SysProc.use_process_jobs   = 𝕱 -- windoze only
+                             , SysProc.detach_console     = 𝓕 -- windoze only
+                             , SysProc.create_new_console = 𝓕 -- windoze only
+                             , SysProc.use_process_jobs   = 𝓕 -- windoze only
                              }
 
   let p' = mapMError (_CreateProcErr #) p
@@ -106,7 +106,7 @@ instance MakeProc () where
                                  , _std_err  = Inherit
                                  }
     case cp of
-      (𝕹, 𝕹, 𝕹, h) → return (h, ())
+      (𝓝, 𝓝, 𝓝, h) → return (h, ())
       _                              → error "MakeProc: cannot happen (())"
 
 instance MakeProc Handle where
@@ -118,7 +118,7 @@ instance MakeProc Handle where
                                  , _std_err  = Inherit
                                  }
     case cp of
-      (𝕹, 𝕵 outH, 𝕹, h) → return (h, outH)
+      (𝓝, 𝓙 outH, 𝓝, h) → return (h, outH)
       _                                → error "MakeProc: cannot happen (H)"
 
 instance MakeProc (Handle,()) where
@@ -130,7 +130,7 @@ instance MakeProc (Handle,()) where
                                  , _std_err  = NoStream
                                  }
     case cp of
-      (𝕹, 𝕵 outH, 𝕹, h) → return (h, (outH,()))
+      (𝓝, 𝓙 outH, 𝓝, h) → return (h, (outH,()))
       _                                → error "MakeProc: cannot happen (H,())"
 
 instance MakeProc ((),Handle) where
@@ -142,7 +142,7 @@ instance MakeProc ((),Handle) where
                                  , _std_err  = CreatePipe
                                  }
     case cp of
-      (𝕹, 𝕹, 𝕵 errH, h) → return (h, ((),errH))
+      (𝓝, 𝓝, 𝓙 errH, h) → return (h, ((),errH))
       _                                → error "MakeProc: cannot happen ((),H)"
 
 instance MakeProc ((),()) where
@@ -154,12 +154,12 @@ instance MakeProc ((),()) where
                                  , _std_err  = NoStream
                                  }
     -- I had originally had irrefutable patterns here, e.g.,
-    --   ~(𝕹, 𝕹, 𝕵 errH, h) ← createProc_ ...
+    --   ~(𝓝, 𝓝, 𝓙 errH, h) ← createProc_ ...
     -- but later GHC8 complained:
     --   Pattern match has inaccessible right hand side
     --   In a pattern binding…
     case cp of
-      (𝕹, 𝕹, 𝕹, h) → return (h, ((),()))
+      (𝓝, 𝓝, 𝓝, h) → return (h, ((),()))
       _                              → error "MakeProc: cannot happen ((),())"
 
 instance MakeProc (Handle,Handle) where
@@ -171,7 +171,7 @@ instance MakeProc (Handle,Handle) where
                                  , _std_err  = CreatePipe
                                  }
     case cp of
-      (𝕹, 𝕵 outH, 𝕵 errH, h) → return (h, (outH,errH))
+      (𝓝, 𝓙 outH, 𝓙 errH, h) → return (h, (outH,errH))
       _                                  → error "MakeProc: cannot happen (HH)"
 
 -- that's all, folks! ----------------------------------------------------------

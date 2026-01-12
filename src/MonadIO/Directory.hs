@@ -124,8 +124,8 @@ mkpath ∷ ∀ ε δ μ . (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallSt
 mkpath d p = do
   to_make ← filterM (fmap (≡ NoFExists) ∘ fexists) (parents' d)
   case headMay to_make of
-    𝕹    → return () -- nothing to do, all exist
-    𝕵 t  → -- make the intervening dirs, carefully; in case of any error,
+    𝓝    → return () -- nothing to do, all exist
+    𝓙 t  → -- make the intervening dirs, carefully; in case of any error,
            -- try to nuke those we freshly made
            onException (forM_ to_make (\ a → mkdir a p)) (nuke t)
 

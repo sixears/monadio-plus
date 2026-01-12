@@ -104,7 +104,7 @@ instance Printable CmdExe where
 
 instance AsFilePath CmdExe where
   filepath = prism (\ (CmdExe f) → f ⫥ filepath)
-                   (\ f → maybe (𝕷 f) (𝕽 ∘ CmdExe) (f ⩼ filepath))
+                   (\ f → maybe (𝓛 f) (𝓡 ∘ CmdExe) (f ⩼ filepath))
 
 -- CmdArgs -------------------------------------------------
 
@@ -207,9 +207,9 @@ instance Printable CmdSpec where
   print c = let ds t = "«" ⊕ t ⊕ "»"
                 as t = "<" ⊕ t ⊕ ">"
                 cg = if CreateGroup ≡ c ⊣ createGroup
-                     then 𝕵 "(CreateGroup)"
-                     else 𝕹
-             in P.text ∘ intercalate " " $ catMaybes [ 𝕵 ∘ pack $ cmdStr c
+                     then 𝓙 "(CreateGroup)"
+                     else 𝓝
+             in P.text ∘ intercalate " " $ catMaybes [ 𝓙 ∘ pack $ cmdStr c
                                                      , toText ⊳ c ⊣ env
                                                      , ds ∘ toText ⊳ c ⊣ cwd
                                                      , as ⊳ c ⊣ cmdName
@@ -223,10 +223,10 @@ instance Printable CmdSpec where
 mkCmd ∷ AbsFile → [𝕋] → CmdSpec
 mkCmd exe args = CmdSpec { _cmdExe      = CmdExe exe
                          , _cmdArgs     = CmdArgs args
-                         , _cwd         = 𝕹
-                         , _env         = 𝕹
+                         , _cwd         = 𝓝
+                         , _env         = 𝓝
                          , _createGroup = NoCreateGroup
-                         , _cmdName     = 𝕹
+                         , _cmdName     = 𝓝
                          , _expExit     = ExpExit (singleton 0, empty)
                          }
 
@@ -237,10 +237,10 @@ mkCmd exe args = CmdSpec { _cmdExe      = CmdExe exe
 mkCmd' ∷ AbsFile → [𝕋] → CmdSpec
 mkCmd' exe args = CmdSpec { _cmdExe      = CmdExe exe
                           , _cmdArgs     = CmdArgs args
-                          , _cwd         = 𝕵 root
-                          , _env         = 𝕵 $ Env.fromList []
+                          , _cwd         = 𝓙 root
+                          , _env         = 𝓙 $ Env.fromList []
                           , _createGroup = CreateGroup
-                          , _cmdName     = 𝕹
+                          , _cmdName     = 𝓝
                           , _expExit     = ExpExit (singleton 0, empty)
                           }
 

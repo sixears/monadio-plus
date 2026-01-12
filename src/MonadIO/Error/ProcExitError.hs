@@ -50,17 +50,17 @@ instance HasCallstack ProcExitError where
                       ProcExitError cp pd es so se cs)
 
 instance Printable ProcExitError where
-  print (ProcExitError cs pid es (𝕵 so) (𝕵 se) _) =
+  print (ProcExitError cs pid es (𝓙 so) (𝓙 se) _) =
     P.text $
       [fmt|PROCESS FAILED: CMD>  %T «%w»\nEXIT: %T\nSTDOUT: %T\nSTDERR: %T|]
         cs pid es so se
-  print (ProcExitError cs pid es (𝕵 so) 𝕹 _) =
+  print (ProcExitError cs pid es (𝓙 so) 𝓝 _) =
     P.text $ [fmt|PROCESS FAILED: CMD>  %T «%w»\nEXIT: %T\nSTDOUT: %T|]
              cs pid es so
-  print (ProcExitError cs pid es 𝕹 (𝕵 se) _) =
+  print (ProcExitError cs pid es 𝓝 (𝓙 se) _) =
     P.text $ [fmt|PROCESS FAILED: CMD>  %T «%w»\nEXIT: %T\nSTDERR: %T|]
              cs pid es se
-  print (ProcExitError cs pid es 𝕹 𝕹 _) =
+  print (ProcExitError cs pid es 𝓝 𝓝 _) =
     P.text $ [fmt|PROCESS FAILED: CMD> %T «%w»\nEXIT: %T|]
              cs pid es
 

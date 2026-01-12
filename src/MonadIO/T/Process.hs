@@ -134,7 +134,7 @@ tests =
     testErrs ∷ (Eq α, Show α) ⇒
                𝕊 → (Lens' ProcExitError α) → α → Assertion
     testErrs n f x =
-      assertIOError (\ e → assertEqual n (𝕵 x) (e ^? _ProcExitError ∘ f)) grepf
+      assertIOError (\ e → assertEqual n (𝓙 x) (e ^? _ProcExitError ∘ f)) grepf
     testE ∷ (Eq α, Printable α, Show α) ⇒
               (Lens' ProcExitError α) → α → Assertion
     testE f x =
@@ -161,11 +161,11 @@ tests =
           , testErr' exitVal (ExitVal 2)
           , testErr' cmdExe (CmdExe Paths.grep)
           , testErr' cmdArgs (CmdArgs ["x","/nonesuch"])
-          , testCase "stdout" $ testErrs "stdout" stdOut (𝕵 "")
+          , testCase "stdout" $ testErrs "stdout" stdOut (𝓙 "")
           , let
               msg = [fmt|%T: /nonesuch: No such file or directory\n|] Paths.grep
              in
-              testCase "stderr" $ testErrs "stderr" stdErr (𝕵 msg)
+              testCase "stderr" $ testErrs "stderr" stdErr (𝓙 msg)
           ]
       ]
 

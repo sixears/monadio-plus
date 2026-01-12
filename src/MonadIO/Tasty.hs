@@ -11,7 +11,6 @@ import Base1T
 -- base --------------------------------
 
 import Control.Monad       ( (>=>) )
-import Data.Foldable       ( Foldable )
 import System.IO           ( FilePath )
 import System.Posix.Types  ( FileMode )
 
