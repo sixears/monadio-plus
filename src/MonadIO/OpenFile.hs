@@ -208,7 +208,7 @@ openFile_ enc fomode (review _File_ → fn) = do
                    _          → flags
   h ← liftIO $ openFd (fn ⫥ filepath) (openMode mode) flags' ≫ fdToHandle
   hSetEncoding h enc
-  return $ ℍ h (toText $ fn ⫥ filepath) mode
+  return $ ℍ h fn mode
 
 ----------------------------------------
 

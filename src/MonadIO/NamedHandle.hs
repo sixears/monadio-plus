@@ -32,6 +32,11 @@ import Data.ByteString  ( ByteString )
 
 import qualified Text.Printer  as  P
 
+-- fpath -------------------------------
+
+import FPath.AbsFile  ( absfile )
+import FPath.File     ( File( FileA ) )
+
 -- lens --------------------------------
 
 import Control.Lens.Getter  ( view )
@@ -46,7 +51,7 @@ import Data.Text  ( lines )
 
 {-| A Handle (`System.IO.Handle`), along with its name and IOMode -}
 data NamedHandle = NamedHandle { _handle  ∷ Handle
-                               , _hname   ∷ 𝕋
+                               , _hname   ∷ File
                                , _hiomode ∷ IOMode
                                }
   deriving Show
@@ -54,13 +59,13 @@ data NamedHandle = NamedHandle { _handle  ∷ Handle
 {-| unicode alias for `NamedHandle` -}
 type ℍ = NamedHandle
 {-| unicode alias for `NamedHandle` -}
-pattern ℍ ∷ Handle → 𝕋 → IOMode → ℍ
+pattern ℍ ∷ Handle → File → IOMode → ℍ
 pattern ℍ h n i ← NamedHandle h n i
   where ℍ h n i = NamedHandle h n i
 
 {-| things that have a `NamedHandle` -}
 class HasNamedHandle α where
-  hname   ∷ Lens' α 𝕋
+  hname   ∷ Lens' α File
   handle  ∷ Lens' α Handle
   hiomode ∷ Lens' α IOMode
 
@@ -70,7 +75,7 @@ instance HasNamedHandle ℍ where
   hiomode = lens _hiomode (\ h i → h { _hiomode = i })
 
 instance Printable NamedHandle where
-  print h = P.text $ [fmt|«ℍ: %t ‖ %w»|] (_hname h) (_hiomode h)
+  print h = P.text $ [fmt|«ℍ: %T ‖ %w»|] (_hname h) (_hiomode h)
 
 ----------------------------------------
 
@@ -186,14 +191,14 @@ instance HWriteContents 𝔹𝕊 where
 
 {-| A named read-only handle for stdin -}
 stdin  ∷ ℍ
-stdin  = ℍ System.IO.stdin "<STDIN>" ReadMode
+stdin  = ℍ System.IO.stdin (FileA [absfile|/dev/stdin|]) ReadMode
 
 {-| A named writable handle for stdout -}
 stdout ∷ ℍ
-stdout = ℍ System.IO.stdout "<STDOUT>" WriteMode
+stdout = ℍ System.IO.stdout (FileA [absfile|/dev/stdout|]) WriteMode
 
 {-| A named writable handle for stderr -}
 stderr ∷ ℍ
-stderr = ℍ System.IO.stderr "<STDERR>" WriteMode
+stderr = ℍ System.IO.stderr (FileA [absfile|/dev/stderr|]) WriteMode
 
 -- that's all, folks! ----------------------------------------------------------

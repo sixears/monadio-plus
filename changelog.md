@@ -1,3 +1,7 @@
+2.6.2.0 2026-01-21
+==================
+- NamedHandle now takes a file rather than a text name
+
 2.6.1.0 2026-01-12
 ==================
 - Add Show, Printable instances of NamedHandle
