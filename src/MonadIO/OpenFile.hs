@@ -195,7 +195,7 @@ appendFlags = OpenFileFlags { append = 𝓣, exclusive = 𝓕, noctty = 𝓕
 
 ----------------------------------------
 
-openFile_ ∷ (MonadIO μ, FileAs γ) ⇒
+openFile_ ∷ ∀ γ μ . (MonadIO μ, FileAs γ) ⇒
             HEncoding → FileOpenMode → γ → μ ℍ
 openFile_ enc fomode (review _File_ → fn) = do
   let (mode,flags) = fileOpenMode fomode
@@ -212,14 +212,15 @@ openFile_ enc fomode (review _File_ → fn) = do
 
 ----------------------------------------
 
-openFile ∷ (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+openFile ∷ ∀ ε γ μ .
+           (MonadIO μ, FileAs γ, AsIOError ε, MonadError ε μ, HasCallStack) =>
            HEncoding → FileOpenMode → γ → μ ℍ
 openFile enc fomode fn = asIOError $ openFile_ enc fomode fn
 
 ----------------------------------------
 
 {- | An open RW handle to /dev/null. -}
-devnull ∷ (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒ μ ℍ
+devnull ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, MonadError ε μ, HasCallStack) => μ ℍ
 devnull = openFile Binary (FileRWNoTrunc 𝓝) [absfile|/dev/null|]
 
 ----------------------------------------
@@ -359,13 +360,15 @@ withFileTests =
      U+FFFD.
 -}
 -- plagiarized from https://www.snoyman.com/blog/2016/12/beware-of-readfile
-readFileUTF8Lenient ∷ (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ,
-                       FileAs γ) ⇒
+readFileUTF8Lenient ∷ ∀ ε γ μ .
+                      (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ,
+                       FileAs γ) =>
                       γ → μ 𝕋
 readFileUTF8Lenient fn = decodeUtf8With lenientDecode ⊳ readFile fn
 
-readFileUTF8LenientY ∷ (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ,
-                        FileAs γ) ⇒
+readFileUTF8LenientY ∷ ∀ ε γ μ .
+                       (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ,
+                        FileAs γ) =>
                        γ → μ (𝕄 𝕋)
 readFileUTF8LenientY = squashNoSuchThingT ∘ readFileUTF8Lenient
 

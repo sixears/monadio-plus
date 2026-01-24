@@ -23,13 +23,13 @@ import Data.Text.IO  ( hPutStrLn )
 
 --------------------------------------------------------------------------------
 
-say_ ∷ (MonadIO μ, Printable τ) ⇒ Handle → τ → μ ()
+say_ ∷ ∀ τ μ . (MonadIO μ, Printable τ) ⇒ Handle → τ → μ ()
 say_ h = liftIO ∘ hPutStrLn h ∘ toText
 
-say ∷ (MonadIO μ, Printable τ) ⇒ τ → μ ()
+say ∷ ∀ τ μ . (MonadIO μ, Printable τ) ⇒ τ → μ ()
 say = say_ stdout
 
-warn ∷ (MonadIO μ, Printable τ) ⇒ τ → μ ()
+warn ∷ ∀ τ μ . (MonadIO μ, Printable τ) ⇒ τ → μ ()
 warn = say_ stderr
 
 

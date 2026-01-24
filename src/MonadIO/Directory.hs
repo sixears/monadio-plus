@@ -71,7 +71,8 @@ chdir (review filepath → d) = asIOError $ setCurrentDirectory d
 ----------------------------------------
 
 {- | Perform IO with the dir *temporarily* changed to a given directory. -}
-inDir ∷ (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) ⇒
+inDir ∷ ∀ ε α δ μ .
+        (MonadIO μ, DirAs δ, AsIOError ε, MonadError ε μ, HasCallStack) =>
         δ              -- ^ directory to work in
       → ExceptT ε IO α -- ^ IO to perform in the given directory
       → μ α

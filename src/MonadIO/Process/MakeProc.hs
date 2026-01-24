@@ -57,7 +57,8 @@ import MonadIO.Process.MkInputStream  ( MkInputStream( mkIStream ) )
 -- MakeProc ------------------------------------------------
 
 {- | Create a process handle from a `CreateProc` specification. -}
-createProc_ ∷ (MonadIO μ, AsCreateProcError ε, MonadError ε μ, HasCallStack) ⇒
+createProc_ ∷ ∀ ε μ .
+              (MonadIO μ, AsCreateProcError ε, MonadError ε μ, HasCallStack) =>
               CreateProc
             → μ (𝕄 Handle, 𝕄 Handle, 𝕄 Handle, ProcessHandle)
 createProc_ cp = do

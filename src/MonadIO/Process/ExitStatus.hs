@@ -86,7 +86,7 @@ instance HasExitStatus (ExitStatus, α) where
 
 {- | Given a datum α which HasExitStatus, throw an 'error' (created by f) iff
      the exit is not okay - that is, if it's non-zero. -}
-throwNotOkay ∷ (HasExitStatus α, MonadError ε μ) ⇒ (α → ε) → α → μ ()
+throwNotOkay ∷ ∀ ε α μ . (HasExitStatus α, MonadError ε μ) ⇒ (α → ε) → α → μ ()
 throwNotOkay f ev = when (not $ exitOkay ev) $ throwError (f ev)
 
 class HasStdOutT s where

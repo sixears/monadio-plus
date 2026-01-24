@@ -34,12 +34,12 @@ instance HasNamedFileLock NamedFileLock where
 
 -----------------------------------------------------------
 
-flock ∷ (MonadIO μ, FileAs γ, AsFilePath γ, Printable γ) ⇒
+flock ∷ ∀ γ μ . (MonadIO μ, FileAs γ, AsFilePath γ, Printable γ) ⇒
         SharedExclusive → γ → μ NamedFileLock
 flock mode fn = liftIO $
   NamedFileLock (toText fn) mode ⊳ lockFile (fn ⫥ filepath) mode
 
-flockNB ∷ (MonadIO μ, FileAs γ, AsFilePath γ, Printable γ) ⇒
+flockNB ∷ ∀ γ μ . (MonadIO μ, FileAs γ, AsFilePath γ, Printable γ) ⇒
           SharedExclusive → γ → μ (𝕄 NamedFileLock)
 flockNB mode fn = liftIO $
   NamedFileLock (toText fn) mode ⊳⊳ tryLockFile (fn ⫥ filepath) mode

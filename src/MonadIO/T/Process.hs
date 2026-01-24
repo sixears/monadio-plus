@@ -63,13 +63,13 @@ foo = unlines [ "jimmy 7"
               , "marbyns 3"
               ]
 
-grep_ ∷ (MonadIO μ, MkInputStream σ, MonadError ProcError μ) ⇒
+grep_ ∷ ∀ σ μ . (MonadIO μ, MkInputStream σ, MonadError ProcError μ) ⇒
         [𝕋] → σ → μ (ExitInfo, (𝕋,𝕋))
 grep_ args input =
   let cmd = mkCmd Paths.grep args & expExitVal ⨭ 1
    in system input cmd
 
-grep ∷ (MonadIO μ, MkInputStream σ, MonadError ProcError μ) ⇒
+grep ∷ ∀ σ μ . (MonadIO μ, MkInputStream σ, MonadError ProcError μ) ⇒
        𝕋 → σ → μ (ExitInfo, (𝕋,𝕋))
 grep pat input = grep_ [pat] input
 

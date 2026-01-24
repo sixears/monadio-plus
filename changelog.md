@@ -1,3 +1,7 @@
+2.6.3.0 2026-01-24
+==================
+- lots of explict ∀ on appropriate functions
+
 2.6.2.0 2026-01-21
 ==================
 - NamedHandle now takes a file rather than a text name

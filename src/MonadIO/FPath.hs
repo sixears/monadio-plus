@@ -162,7 +162,7 @@ splitPointsTests =
      for every dir along the way, and read for the final file (if any); else an
      `AsIOError` will be raised.
  -}
-resolve ∷ forall ε μ . (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ) ⇒
+resolve ∷ ∀ ε μ . (AsIOError ε, MonadError ε μ, HasCallStack, MonadIO μ) ⇒
           AbsDir → FilePath → μ (FilePath, FilePath)
 resolve d fp =
   let -- prepend `d`, note this is a no-op for input abs functions

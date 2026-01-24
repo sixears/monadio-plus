@@ -270,7 +270,7 @@ fileWritableTests =
     `a` is the initial value of the fold; `io' is the folding function; `h` is
     the filehandle to read.
  -}
-fileFoldLinesH ∷ (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
+fileFoldLinesH ∷ ∀ α μ . (MonadIO μ) ⇒ α → (α → 𝕋 → μ α) → Handle → μ α
 fileFoldLinesH a io h = do
   eof ← liftIO $ hIsEOF h
   case eof of

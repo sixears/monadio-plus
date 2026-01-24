@@ -141,7 +141,7 @@ getpwuid = getPwBy getUserEntryForID
 ----------------------------------------
 
 {-| the current user name -}
-getUserName ∷ (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
+getUserName ∷ ∀ ε μ . (MonadIO μ, AsIOError ε, AsFPathError ε, MonadError ε μ) ⇒
               μ (𝕄 UserName)
 getUserName = fmap _userName ⊳ (getuid ≫ getpwuid)
 
