@@ -1,3 +1,7 @@
+2.6.4.1 2026-08-24
+==================
+- `MonadIO.Directory.listdir*` now includes filesize in output
+
 2.6.4.0 2026-08-24
 ==================
 - +`MonadIO.Directory.__chdir__`

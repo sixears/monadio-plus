@@ -52,7 +52,7 @@ import FPath.ToDir             ( ToDir )
 
 -- fstat -------------------------------
 
-import FStat  ( FStat, ftypeLSTxt, permLSTxt )
+import FStat  ( FStat, ftypeLSTxt, permLSTxt, size )
 
 -- monaderror-io -----------------------
 
@@ -284,7 +284,7 @@ listdir ∷ ∀ ε μ .(MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε
 listdir opts d = do
   (files, dirs, ferrs, derrs) ← directoryList opts d
   let to_txt ∷ Printable τ => (τ,FStat) → 𝕋
-      to_txt (x,s) = [fmt|%t %t %T|] (ftypeLSTxt s) (permLSTxt s) x
+      to_txt (x,s) = [fmt|%t %t %7y %T|] (ftypeLSTxt s) (permLSTxt s) (size s) x
       files_dirs = sortBy go $ ю [ first AbsF ⊳ files, first AbsD ⊳ dirs ]
                    where go (a,_) (b,_) = compare (toText a) (toText b)
       files_dirs_txts = to_txt ⊳ files_dirs
@@ -297,15 +297,13 @@ listdir opts d = do
 ----------
 
 {-| dump a directory listing to stdout.  See `listdir` -}
-listdirStdOut ∷ ∀ ε μ .(MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ)=>
-                DirectoryListOpts → AbsDir → μ ()
+listdirStdOut ∷ MonadIO μ => DirectoryListOpts → AbsDir → μ ()
 listdirStdOut opts d = ӝ (listdir @FPathIOError opts d)≫ liftIO ∘ mapM_ putStrLn
 
 ----------
 
 {-| dump a directory listing to stderr.  See `listdir` -}
-listdirStdErr ∷ ∀ ε μ .(MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ)=>
-                DirectoryListOpts → AbsDir → μ ()
+listdirStdErr ∷ MonadIO μ => DirectoryListOpts → AbsDir → μ ()
 listdirStdErr opts d =
   ӝ (listdir @FPathIOError opts d)≫ liftIO ∘ mapM_ (hPutStrLn stderr)
 
