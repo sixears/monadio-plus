@@ -213,6 +213,6 @@ doProc ∷ ∀ ε ζ ω σ μ .
 doProc finally input cspec = do
   result ← systemx input cspec
   finally
-  return result -- XXX throwSig' (𝕽 result)
+  return result
 
 -- that's all, folks! ----------------------------------------------------------

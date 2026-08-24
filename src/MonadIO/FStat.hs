@@ -19,9 +19,10 @@ import Base1T
 
 -- base --------------------------------
 
-import Data.Bool   ( bool )
-import Data.Maybe  ( isJust )
-import System.IO   ( FilePath )
+import Data.Bool           ( bool )
+import Data.Maybe          ( isJust )
+import Data.Type.Equality  ( type (~) )
+import System.IO           ( FilePath )
 
 -- fpath -------------------------------
 
@@ -48,6 +49,10 @@ import MonadError.IO.Error  ( IOError
 
 import Safe  ( lastDef, lastMay )
 
+-- text-printer ------------------------
+
+import Text.Printer  qualified as  P
+
 -- unix --------------------------------
 
 import System.Posix.Files  ( FileStatus, getFileStatus, getSymbolicLinkStatus )
@@ -56,6 +61,14 @@ import System.Posix.Files  ( FileStatus, getFileStatus, getSymbolicLinkStatus )
 
 data FExists = FExists | NoFExists
   deriving (Eq,Show)
+
+----------
+
+instance Printable FExists where
+  print FExists = P.text "FExists"
+  print NoFExists = P.text "NoFExists"
+
+------------------------------------------------------------
 
 {- | Does this 𝕄 FStat refer to a directory? -}
 mIsDir ∷ 𝕄 FStat → 𝔹

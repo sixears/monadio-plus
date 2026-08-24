@@ -1,3 +1,24 @@
+2.6.4.0 2026-08-24
+==================
+- +`MonadIO.Directory.__chdir__`
+- +`MonadIO.Directory.directoryList`
+- +`MonadIO.Directory.glob`
+- +`MonadIO.Directory.listdir`
+- +`MonadIO.Directory.listdirStdOut`
+- +`MonadIO.Directory.listdirStdErr`
+- +`MonadIO.Directory.__nuke__`
+- +`MonadIO.Directory.pwd`
+- +`MonadIO.Directory.__pwd__`
+- fix tests to run in sequence rather than parallel where necessary
+- +`MonadIO.Temp.mkTempDir'`
+- +`MonadIO.Temp.mkTempDir''
+- +`MonadIO.Temp.testsWithTempDir`
+- +`MonadIO.Temp.testsWithTempDir'`
+- +`MonadIO.Temp.testsWithTempDir''`
+- +`MonadIO.Temp.withTempDir`
+- +`MonadIO.Temp.withTempDir'`
+
+
 2.6.3.0 2026-01-24
 ==================
 - lots of explict ∀ on appropriate functions

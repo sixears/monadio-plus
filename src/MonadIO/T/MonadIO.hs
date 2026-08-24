@@ -7,6 +7,10 @@ where
 
 import Base1T
 
+-- tasty -------------------------------
+
+import Test.Tasty  ( DependencyType( AllSucceed ), dependentTestGroup )
+
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
@@ -21,11 +25,13 @@ import qualified MonadIO.T.Process
 --------------------------------------------------------------------------------
 
 tests ∷ TestTree
-tests = testGroup "MonadIO" [ MonadIO.FStat.tests, MonadIO.FPath.tests
-                            , MonadIO.File.tests, MonadIO.OpenFile.tests
-                            , MonadIO.Temp.tests
-                            , MonadIO.T.Process.tests
-                            ]
+tests = dependentTestGroup "MonadIO" AllSucceed [ MonadIO.FStat.tests
+                                                , MonadIO.FPath.tests
+                                                , MonadIO.File.tests
+                                                , MonadIO.OpenFile.tests
+                                                , MonadIO.Temp.tests
+                                                , MonadIO.T.Process.tests
+                                                ]
 
 ----------------------------------------
 

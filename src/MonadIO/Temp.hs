@@ -6,10 +6,12 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 module MonadIO.Temp
-  ( OutputData(..), mkTempDir
+  ( OutputData(..), mkTempDir, mkTempDir', mkTempDir''
   , tempfile, tempfile', tempfile''
   , testsWithTempfile, testsWithTempfiles, testsWithTempfiles'
-  , withTempDir'', withTempDirCD, withTempDirCD'
+  , testsWithTempDir, testsWithTempDir', testsWithTempDir''
+  , withTempDir, withTempDir', withTempDir''
+  , withTempDirCD, withTempDirCD'
   , withTempfile, withTempfile', withTempfile'', withTempfile'''
 
   , tests
@@ -34,6 +36,10 @@ import System.IO              ( FilePath, Handle
                               , nativeNewlineMode, noNewlineTranslation, utf8
                               )
 
+-- base-unicode-symbols ----------------
+
+import Prelude.Unicode  ( (≠) )
+
 -- bytestring --------------------------
 
 import qualified Data.ByteString  as  BS
@@ -46,14 +52,24 @@ import Control.Monad.Catch  ( MonadMask, bracket )
 
 -- fpath -------------------------------
 
+import FPath                   ( (⫻) )
 import FPath.AbsDir            ( AbsDir )
 import FPath.AbsFile           ( AbsFile )
 import FPath.AsFilePath        ( filepath )
+import FPath.Basename          ( basename )
 import FPath.Dir               ( DirAs( _Dir_ ) )
-import FPath.Error.FPathError  ( AsFPathError, FPathIOError )
+import FPath.Dirname           ( dirname )
+import FPath.Error.FPathError  ( AsFPathError, FPathError, FPathIOError )
 import FPath.File              ( FileAs )
-import FPath.Parseable         ( Parseable( parse ) )
-import FPath.PathComponent     ( PathComponent )
+import FPath.Parseable         ( Parseable( parse, parseDir, __parse__ ) )
+import FPath.PathComponent     ( PathComponent, pc )
+import FPath.RelFile           ( relfile )
+
+-- fstat -------------------------------
+
+import qualified FStat
+
+import FStat  ( FStat )
 
 -- lens --------------------------------
 
@@ -65,8 +81,13 @@ import Control.Lens.Tuple      ( _1, _2, _3 )
 
 -- monaderror-io -----------------------
 
+import MonadError           ( ж )
 import MonadError.IO        ( ӝ, asIOErrorT )
 import MonadError.IO.Error  ( IOError )
+
+-- more-unicode ------------------------
+
+import Data.MoreUnicode.Semigroup  ( ѹ )
 
 -- mtl ---------------------------------
 
@@ -75,11 +96,15 @@ import Control.Monad.Trans   ( lift )
 
 -- natural -----------------------------
 
-import Natural  ( length )
+import Natural  ( ỻ )
+
+-- tasty -------------------------------
+
+import Test.Tasty  ( DependencyType( AllSucceed ), dependentTestGroup )
 
 -- tasty-hunit -------------------------
 
-import Test.Tasty.HUnit  ( Assertion )
+import Test.Tasty.HUnit  ( Assertion, assertBool, assertEqual, assertFailure )
 
 -- tasty-plus --------------------------
 
@@ -92,9 +117,18 @@ import System.IO.Temp  ( createTempDirectory, getCanonicalTemporaryDirectory
 
 -- text --------------------------------
 
+import qualified  Data.Text     as  T
 import qualified  Data.Text.IO  as  TextIO
 
-import Data.Text  ( unpack )
+-- time --------------------------------
+
+import Data.Time.Calendar  ( Day )
+import Data.Time.Clock     ( getCurrentTime, utctDay )
+import Data.Time.Format    ( defaultTimeLocale, formatTime )
+
+-- unix --------------------------------
+
+import System.Posix.Process  ( getProcessID )
 
 ------------------------------------------------------------
 --                     local imports                      --
@@ -102,8 +136,8 @@ import Data.Text  ( unpack )
 
 import MonadIO            ( warn )
 import MonadIO.Base       ( hClose, unlink )
-import MonadIO.Directory  ( inDir )
-import MonadIO.OpenFile   ( readFile )
+import MonadIO.Directory  ( chdir, inDir, glob, nuke, pwd, __pwd__)
+import MonadIO.OpenFile   ( readFile, writeFile )
 
 --------------------------------------------------------------------------------
 
@@ -112,11 +146,10 @@ type 𝔹𝕊 = ByteString
 
 ----------------------------------------
 
-parseAbsDir ∷ (AsFPathError ε, MonadError ε η) ⇒ FilePath → η AbsDir
-parseAbsDir = parse ∘ (⊕ "/") ∘ dropWhileEnd (≡ '/')
-
-----------------------------------------
-
+{-| create a temporary file; return file name and/or handle; if just the handle,
+    the file is deleted immediately upon creation; else, the caller is
+    responsible for deletion
+-}
 openTempFile ∷ ∀ ε δ ξ μ .
                (MonadIO μ, DirAs δ, ReturnFNFH ξ,
                 AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack) ⇒
@@ -192,6 +225,20 @@ instance ReturnFNFH (AbsFile, ℍ) where
 
 ------------------------------------------------------------
 
+{-| A prefix (suitable for, e.g., temp files or dirs) in the form of a
+    `RelFile` (which is the programme name, plus a '-' character. -}
+progNamePrefix ∷ ∀ ε μ .
+                 (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+                  HasCallStack) ⇒
+                 μ PathComponent
+progNamePrefix = asIOError getProgName ≫ parse
+
+{-| A version of `progNamePrefix` in which errors are thrown into IO -}
+progNamePrefix' ∷ ∀ μ . (MonadIO μ, HasCallStack) ⇒ μ PathComponent
+progNamePrefix' = ӝ $ progNamePrefix @FPathIOError
+
+----------------------------------------
+
 {- | Create a temporary file, return it as name and/or filehandle.  Any content
      provided is pre-written to the file (and access position for the filehandle
      returned, if any, reset to the beginning of the file).
@@ -224,6 +271,21 @@ tempfile'' d r t = do
 
 --------------------
 
+{-| get the system temporary directory (TMPDIR, etc.) -}
+tempdir ∷ ∀ ε μ .
+          (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
+           HasCallStack) ⇒
+          μ AbsDir
+tempdir = asIOError getCanonicalTemporaryDirectory ≫ parseDir
+
+--------------------
+
+{-| `tempdir`, throwing any errors into IO -}
+__tempdir__ ∷ (MonadIO μ, HasCallStack) ⇒ μ AbsDir
+__tempdir__ = ж @FPathIOError tempdir
+
+----------------------------------------
+
 {- | Like `tempfile''`, but using the system temp directory. -}
 tempfile' ∷ ∀ ε τ ξ μ .
             (MonadIO μ, OutputData τ, ReturnFNFH ξ,
@@ -238,7 +300,7 @@ tempfile ∷ ∀ ε τ ξ μ .
            (MonadIO μ, OutputData τ, ReturnFNFH ξ,
             AsIOError ε, AsFPathError ε, MonadError ε μ, HasCallStack) ⇒
            τ → μ ξ
-tempfile t = progNamePrefix ≫ \ p → tempfile' p t
+tempfile t = progNamePrefix ≫ \ p → tempfile' (p ◇ [pc|-|]) t
 
 ----------------------------------------
 
@@ -261,7 +323,7 @@ withTempfile''' ∷ ∀ ε ξ δ τ ω μ .
                   MonadError ε μ, AsIOError ε, AsFPathError ε, HasCallStack,
                   AsIOError ξ) ⇒
                  δ                   -- ^ Write the tempfile to this dir.
-               → PathComponent       -- ^ Pattern to use for the temfile
+               → PathComponent       -- ^ Pattern to use for the tempfile
                                      --   name.  See `tempfile` for details.
                → τ                   -- ^ Any data to write to the temp file
                                      --   before handing it to the `IO` action.
@@ -307,16 +369,7 @@ withTempfile ∷ ∀ ε τ ω μ .
                (MonadIO μ, MonadMask μ, OutputData τ,
                 MonadError ε μ, AsIOError ε, AsFPathError ε, HasCallStack) ⇒
                τ → (AbsFile → Handle → μ ω) → μ ω
-withTempfile t io = progNamePrefix ≫ \ p → withTempfile' p t io
-
-----------------------------------------
-
-{- | Get the system temporary directory (TMPDIR, etc.) -}
-tempdir ∷ ∀ ε μ .
-          (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
-           HasCallStack) ⇒
-          μ AbsDir
-tempdir = asIOError getCanonicalTemporaryDirectory ≫ parseAbsDir
+withTempfile t io = progNamePrefix ≫ \ p → withTempfile' (p ◇ [pc|-|]) t io
 
 ----------------------------------------
 
@@ -328,7 +381,7 @@ mkTempDir'' ∷ ∀ ε δ μ .
               δ → PathComponent → μ AbsDir
 mkTempDir'' (review $ filepath ∘ _Dir_ → t) (review filepath → r) = do
   d ← liftIO $ createTempDirectory t r
-  parseAbsDir d
+  parseDir d
 
 --------------------
 
@@ -346,7 +399,7 @@ mkTempDir ∷ ∀ ε μ .
             (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
              HasCallStack) ⇒
             μ AbsDir
-mkTempDir = progNamePrefix ≫ mkTempDir'
+mkTempDir = ((◇ [pc|-|]) ⊳ progNamePrefix) ≫ mkTempDir'
 
 ----------------------------------------
 
@@ -380,20 +433,12 @@ withTempDir' ∷ ∀ ε ω μ .
                PathComponent → (AbsDir → ExceptT ε IO ω) → μ ω
 withTempDir' r io = tempdir ≫ \ d → withTempDir'' d r io
 
-{- | A prefix (suitable for, e.g., temp files or dirs) in the form of a
-     `RelFile` (which is the programme name, plus a '-' character. -}
-progNamePrefix ∷ ∀ ε μ .
-                 (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
-                  HasCallStack) ⇒
-                 μ PathComponent
-progNamePrefix = asIOError getProgName ≫ parse ∘ (⊕ "-")
-
 {- | Like `withTempDir'`, with the prefix being the program name plus `"-"`. -}
 withTempDir ∷ ∀ ε ω μ .
               (MonadIO μ, MonadMask μ, AsFPathError ε, AsIOError ε,
                MonadError ε μ, HasCallStack) ⇒
               (AbsDir → ExceptT ε IO ω) → μ ω
-withTempDir io = progNamePrefix ≫ \ p → withTempDir' p io
+withTempDir io = progNamePrefix ≫ \ p → withTempDir' (p ◇ [pc|-|]) io
 
 {- | Like `withTempDir`, but temporarily changes dir into the temporary
      directory, rather than passing the dir name to the IO. -}
@@ -422,13 +467,14 @@ testsWithTempfile txt tsts =
 
 ----------
 
+{-| tests for `testsWithTempFile` -}
 testsWithTempfileTests ∷ TestTree
 testsWithTempfileTests =
   let foo = "foo" ∷ 𝕋
 
       doTest txt exp =
         let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
-         in testsWithTempfile txt [(unpack exp,(\ x→ readfile x ≫ (≟ exp)))]
+         in testsWithTempfile txt [(T.unpack exp,(\ x→ readfile x ≫ (≟ exp)))]
   in testGroup "testsWithTempfile"
                [ doTest foo foo
                ]
@@ -523,7 +569,6 @@ testsWithTempfiles' ∷ ∀ τ γ δ
                                       tests -}
                     → (δ → IO()) {- ^ setup for other IO -}
                     → (δ → IO()) {- ^ release for other IO -}
---                    → [(TestName, (β,δ) → Assertion)]
                     → [(TestName, β → δ → Assertion)]
                     → TestTree
 
@@ -563,8 +608,9 @@ instance Len (β,β') where
 instance Len (β,β',β'') where
   len _ = 3
 instance Len [β] where
-  len = length
+  len = ỻ
 
+{-| tests for `testsWithTempfiles'` -}
 testsWithTempfiles'Tests ∷ TestTree
 testsWithTempfiles'Tests =
   let foo = "foo" ∷ 𝕋
@@ -575,20 +621,20 @@ testsWithTempfiles'Tests =
         let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
          in testsWithTempfiles' name txts (\ fs → return (len fs))
                                 (const $ return ()) (const $ return ())
-                                [ (unpack t,(\ x y → do
-                                                t' ← readfile (x⊣f)
-                                                t ≟ t'
-                                                n @=? y
+                                [ (T.unpack t,(\ x y → do
+                                                  t' ← readfile (x⊣f)
+                                                  t ≟ t'
+                                                  n @=? y
                                             ))
                                 | (t,f) ← exps]
       doTest' name txts exps n =
         let readfile ∷ 𝕄 AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError ∘ fromJust
          in testsWithTempfiles' name txts (\ fs → return (len fs))
                                 (const $ return ()) (const $ return ())
-                                [ (unpack t,(\ x y → do
-                                                t' ← readfile (x⩼f)
-                                                t' ≟ t
-                                                n @=? y
+                                [ (T.unpack t,(\ x y → do
+                                                  t' ← readfile (x⩼f)
+                                                  t' ≟ t
+                                                  n @=? y
                                             ))
                                 | (t,f) ← exps]
   in testGroup "testsWithTempfiles'"
@@ -630,6 +676,7 @@ testsWithTempfiles nm fs ts =
 
 ----------
 
+{-| tests for `testsWithTempfiles` -}
 testsWithTempfilesTests ∷ TestTree
 testsWithTempfilesTests =
   let foo = "foo" ∷ 𝕋
@@ -639,12 +686,12 @@ testsWithTempfilesTests =
       doTest name txts exps =
         let readfile ∷ AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError
          in testsWithTempfiles name txts
-                               [ (unpack t,(\ x→ readfile (x⊣f) ≫ (≟ t)))
+                               [ (T.unpack t,(\ x→ readfile (x⊣f) ≫ (≟ t)))
                                | (t,f) ← exps]
       doTest' name txts exps =
         let readfile ∷ 𝕄 AbsFile → IO 𝕋 = ӝ ∘ readFile @IOError ∘ fromJust
          in testsWithTempfiles name txts
-                               [ (unpack t,(\ x→(readfile (x⩼f)) ≫ (≟ t)))
+                               [ (T.unpack t,(\ x→(readfile (x⩼f)) ≫ (≟ t)))
                                | (t,f) ← exps]
   in testGroup "testsWithTempfiles"
                [ doTest "foo" (Identity foo) [(foo,_1)]
@@ -653,11 +700,227 @@ testsWithTempfilesTests =
                , doTest' "list" [foo,bar,baz] [(foo,ix 0),(bar,ix 1),(baz,ix 2)]
                ]
 
+----------------------------------------
+
+{-| perform tests with the context chdir-d into a newly-created directory, which
+    is cleaned up at exit of the function -}
+testsWithTempDir'' ∷ ∀ δ γ . DirAs γ =>
+                     TestName
+                   → IO γ                 {- ^ top dir to create within        -}
+                   → IO PathComponent     {- ^ dirname to use within top dir   -}
+                   → (AbsDir → IO δ)      {- ^ other IO, whose result to pass to
+                                               tests                           -}
+                   → ((AbsDir, δ) → IO()) {- ^ setup for other IO              -}
+                   → (δ → IO ())          {- ^ release for other IO            -}
+                   → ([(TestName, (AbsDir,δ) → Assertion)])
+                                          {- ^ each test to run                -}
+                   → TestTree
+testsWithTempDir'' name tmpdir dirnam acquire setup release tsts =
+  let
+      -- acquire' creates a temporary directory and passes its path to the user's
+      -- acquire function
+      acquire' = do
+        oldpwd ← ѥ @FPathError pwd ≫ \ case
+          𝓛 e → assertFailure $ [fmt|ERROR during pwd: %T|] e
+          𝓡 r → return r
+        tmpdir' ← tmpdir
+        dirnam' ← dirnam
+        dir ← ѥ (mkTempDir'' @FPathIOError tmpdir' dirnam') ≫ \ case
+          𝓛 e → assertFailure $ [fmt|ERROR during mkTempDir'' %T %T: %T|]
+                                tmpdir' dirnam' e
+          𝓡 d → return d
+        x ← acquire dir
+        return (dir,oldpwd,x)
+
+      setup' (absDir,_,x) = setup (absDir,x)
+
+      release' (absDir,oldpwd,x) = do
+        ѥ @IOError (chdir oldpwd) ≫ \ case
+          𝓛 e → assertFailure $ [fmt|ERROR during chdir %T: %T|] oldpwd e
+          𝓡 _ → return ()
+        ѥ (nuke @IOError absDir) ≫ \ case
+          𝓛 e → assertFailure $ [fmt|ERROR during tempdir nuke: %T|] e
+          𝓡 _ → return ()
+        release x
+
+      tsts' ∷ IO (AbsDir,AbsDir,δ) → TestTree
+      tsts' io_dir_x =
+        let f ∷ (TestName,(AbsDir,δ) → Assertion)
+              → (TestName,(AbsDir,AbsDir,δ) → Assertion)
+            f (n, g) = (n, \ (d,_,x) → 
+                              ѥ @IOError (inDir d (liftIO $ g (d,x))) ≫ \ case
+                                𝓛 e → assertFailure $ [fmt|ERROR (%s): %w|] n e
+                                𝓡 y → return y)
+        in  ioTests name (f ⊳ tsts) io_dir_x
+  in
+    withResourceCleanup acquire' setup' release' tsts'
+
+--------------------
+
+{-| tests for testsWithTempDir'' -}
+testsWithTempDir''Tests ∷ TestTree
+testsWithTempDir''Tests =
+  let today  ∷ IO Day = utctDay ⊳ getCurrentTime
+
+      -- we use a specific prefix so we can check that it's empty before & after
+      -- the fact
+      prefix ∷ IO PathComponent -- the prefix of the tmpdir, in tempdir
+      prefix = do
+        prog_name  ← progNamePrefix'
+        day        ← today
+        pid        ← getProcessID
+        let date   = formatTime defaultTimeLocale "%F" day
+            datePC = __parse__ date
+            pidPC  = __parse__ $ show pid
+        return $ [pc|-|] `ѹ` (prog_name :| [ datePC, pidPC ])
+
+      glob' ∷ (MonadIO μ, Printable τ, MonadError FPathIOError μ) =>
+              τ → AbsDir
+            → μ ([(AbsFile,FStat)],[(AbsDir,FStat)],[(AbsFile,IOError)])
+      glob' p = glob  (toString p)
+
+  in  dependentTestGroup "testsWithTempDir''" AllSucceed $
+        let testfile = [relfile|testfile|]
+        in  [ -- just to show tests are working
+              testCase "check" $ assertSuccess "check"
+            , testCase "temp-dir-doesnt-pre-exist" $ do
+
+                t ∷ AbsDir ← __tempdir__
+                pfx ← prefix
+
+                ѥ (glob' pfx t) ≫ \ case
+                  𝓛 e → assertFailure $ [fmt|error globbing %T: %T|] t e
+                  𝓡 (fs,ds,es) → do
+                    if es ≠ []
+                    then let es' = (\ (f,e) → [fmtT|%T: %T|] f e) ⊳ es
+                         in  assertFailure$ [fmt|error(s) found globbing %T: %L|]
+                                            t es'
+                    else do assertEqual ([fmt|no files matching %T|] pfx) [] fs
+                            assertEqual ([fmt|no directories matching %T|] pfx)
+                                        [] ds
+
+            , let nil    = const $ return ()
+              in  testsWithTempDir'' "for-real" __tempdir__ prefix nil nil nil
+                [ ("cwd-is-in-tempdir",
+                   const $ do p ← __pwd__
+                              t ← __tempdir__
+                              let name = [fmt|%T is dirname of %T|] t p
+                              assertBool name (t ≡ p ⊣ dirname)
+                  )
+                , ("have-chdir-into-tmpdir",
+                   \ (d,()) → __pwd__ ≫ \ p →assertEqual([fmt|%T is %T|] d p)d p
+                  )
+                , ("cwd-basename-is-prefixed",
+                   const $ do p ← __pwd__
+                              pfx ← prefix
+                              let name = [fmt|%T is pfx of basename of %T|] pfx p
+                                  p'   = toText $ basename p
+                              assertBool name (toText pfx `T.isPrefixOf` p')
+                  )
+
+                , ("temp-dir-is-only-one",
+                   \ (d,()) → do
+
+                    t ∷ AbsDir ← __tempdir__
+                    pfx ← prefix
+
+                    ѥ (glob' pfx t) ≫ \ case
+                      𝓛 e → assertFailure $ [fmt|error globbing %T: %T|] t e
+                      𝓡 (fs,ds,es) → do
+                        if es ≠ []
+                        then let es' = (\ (f,e) → [fmtT|%T: %T|] f e) ⊳ es
+                             in  assertFailure $
+                                   [fmt|error(s) found globbing %T: %L|] t es'
+                        else do assertEqual([fmt|no files matching %T|] pfx)[] fs
+                                assertEqual ([fmt|only %T|] d) [d] (fst ⊳ ds)
+                  )
+
+                , ("write-file", const $ do
+                     let fn = [relfile|testfile|]
+                     ѥ @IOError (writeFile (𝓙 0o0640) fn ("foo"∷𝕋)) ≫ \ case
+                       𝓛 e  → assertFailure $ [fmt|failed writing %T: %T|]
+                                               fn e
+                       𝓡 () → assertSuccess $ [fmt|wrote %T|] fn
+                  )
+
+                , ("written-file-is-only-one",
+                   \ (d,()) → do
+
+                    t ∷ AbsDir ← __tempdir__
+
+                    ѥ (glob' (""∷𝕊) d) ≫ \ case
+                      𝓛 e → assertFailure $ [fmt|error globbing %T: %T|] t e
+                      𝓡 (fs,ds,es) → do
+                        if es ≠ []
+                        then let es' = (\ (f,e) → [fmtT|%T: %T|] f e) ⊳ es
+                             in  assertFailure $
+                                   [fmt|error(s) found globbing %T: %L|] t es'
+                        else do let testfile' = d ⫻ testfile
+                                case fs of
+                                  []        → assertFailure $
+                                                [fmt|no files found in %T|] d
+                                  [(fn,st)] → do assertEqual "only file testfile"
+                                                             testfile' fn
+                                                 assertEqual "file size ≠ 3"
+                                                             3 (FStat.size st)
+                                  _         → 
+                                    assertFailure $
+                                      [fmt|too many files found in %T: %L|]
+                                      d (fst ⊳ fs)
+                                assertEqual "no directories" [] (ds)
+                  )
+                ]
+
+            , testCase "temp-dir-doesnt-post-exist" $ do
+
+                t ∷ AbsDir ← __tempdir__
+                pfx ← prefix
+
+                ѥ (glob' pfx t) ≫ \ case
+                  𝓛 e → assertFailure $ [fmt|error globbing %T: %T|] t e
+                  𝓡 (fs,ds,es) → do
+                    if es ≠ []
+                    then let es' = (\ (f,e) → [fmtT|%T: %T|] f e) ⊳ es
+                         in  assertFailure$ [fmt|error(s) found globbing %T: %L|]
+                                            t es'
+                    else do assertEqual ([fmt|no files matching %T|] pfx) [] fs
+                            assertEqual ([fmt|no directories matching %T|] pfx)
+                                        [] ds
+
+            ]
+
+----------------------------------------
+
+{-| specialization of `testsWithTempDir'', with empty acquire,setup,release
+    and using the system temp directory
+-}
+testsWithTempDir' ∷ TestName
+                  → IO PathComponent     {- ^ dirname to use within top dir   -}
+                  → [(TestName, AbsDir → Assertion)]
+                                         {- ^ each test to run                -}
+                  → TestTree
+testsWithTempDir' name dirnam tsts =
+  let tmpdir = ӝ @FPathIOError tempdir
+      nil    = const $ return ()
+  in  testsWithTempDir'' name tmpdir dirnam nil nil nil
+                         (second (\ f (d, _) → f d) ⊳ tsts)
+
+----------------------------------------
+
+{-| specialization of `testsWithTempDir'` using an automatically generated dir
+    prefix -}
+testsWithTempDir ∷ TestName
+                 → [(TestName, AbsDir → Assertion)] {- ^ each test to run -}
+                 → TestTree
+testsWithTempDir name = testsWithTempDir' name ((◇ [pc|-|]) ⊳ progNamePrefix')
+
 -- tests -----------------------------------------------------------------------
 
+{-| unit tests -}
 tests ∷ TestTree
-tests = testGroup "Temp" [ testsWithTempfileTests, testsWithTempfilesTests
-                         , testsWithTempfiles'Tests ]
+tests = dependentTestGroup "Temp" AllSucceed
+                           [ testsWithTempfileTests, testsWithTempfilesTests
+                           , testsWithTempfiles'Tests, testsWithTempDir''Tests ]
 
 ----------------------------------------
 

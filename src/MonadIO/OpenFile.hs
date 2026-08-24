@@ -61,9 +61,17 @@ import FPath.File       ( FileAs(_File_) )
 
 import MonadError.IO.Error ( IOError, squashNoSuchThingT )
 
+-- tasty -------------------------------
+
+import Test.Tasty  ( DependencyType( AllSucceed ), dependentTestGroup )
+
 -- tasty-hunit -------------------------
 
 import Test.Tasty.HUnit ( Assertion )
+
+-- tasty-plus --------------------------
+
+import TastyPlus  ( (≟) )
 
 -- text --------------------------------
 
@@ -83,6 +91,7 @@ import System.Posix.IO ( OpenFileFlags(OpenFileFlags, append, exclusive, noctty,
 ------------------------------------------------------------
 
 import MonadIO.Base        ( chmod, unlink )
+import MonadIO.FStat       ( FExists( NoFExists ), lfexists' )
 import MonadIO.NamedHandle ( HEncoding(Binary, NoEncoding, UTF8),
                              HGetContents(hGetContents),
                              HWriteContents(hWriteContents),
@@ -329,29 +338,35 @@ withFileTests =
         testCase "appendFileUTF8" $ appnd perms fn t ≫ assertIsRight
       testAppendFail perms fn t =
         testCase "appendFileUTF8 fail" $ appnd perms fn t ≫ assertIsLeft
-   in testGroup "withFile"
-                [ -- WRITE NEW FILE NO PERMS, CHECK FOR FAILURE
-                  testWriteFail 𝓝 f txt
-                , testWrite (𝓙 0o600) f txt
-                , testRead f txt
-                -- re-write, to check for lack of auto-truncation
-                , testWriteNoTrunc (𝓙 0o600) f t2
-                , testRead f (t2 ⊕ drop (length t2) txt)
-                , testAppend (𝓙 0o600) f txt
-                , testRead f (t2 ⊕ drop (length t2) txt ⊕ txt)
-                -- DELETE
-                , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
-                -- TEST READ FAIL
-                , testReadFail f
-                -- APPEND NEW FAIL
-                , testAppendFail 𝓝 f txt
-                , testAppend (𝓙 0o000) f txt
-                -- TEST READ FAIL
-                , testReadFail f
-                , testCase "chmod" $ ѥ (chmod 0400 f) ≫ assertIsRight
-                -- DELETE
-                , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
-                ]
+      testNotExists fn =
+        let name = [fmt|'%T' does not exist|] fn
+        in  testCase name $ ѥ @IOError (lfexists' fn) ≫assertRight (≟ NoFExists)
+   in dependentTestGroup "withFile" AllSucceed
+                         [ testNotExists f
+                           -- WRITE NEW FILE NO PERMS, CHECK FOR FAILURE
+                         , testWriteFail 𝓝 f txt
+                         , testWrite (𝓙 0o600) f txt
+                         , testRead f txt
+                         -- re-write, to check for lack of auto-truncation
+                         , testWriteNoTrunc (𝓙 0o600) f t2
+                         , testRead f (t2 ⊕ drop (length t2) txt)
+                         , testAppend (𝓙 0o600) f txt
+                         , testRead f (t2 ⊕ drop (length t2) txt ⊕ txt)
+                         -- DELETE
+                         , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
+                         -- TEST READ FAIL
+                         , testReadFail f
+                         -- APPEND NEW FAIL
+                         , testAppendFail 𝓝 f txt
+                         , testAppend (𝓙 0o000) f txt
+                         -- TEST READ FAIL
+                         , testReadFail f
+                         , testCase "chmod" $ ѥ (chmod 0400 f) ≫ assertIsRight
+                         -- DELETE
+                         , testCase "delete" $ ѥ (unlink f) ≫ assertIsRight
+                         -- make sure it's gone
+                         , testNotExists f
+                         ]
 
 ----------------------------------------
 

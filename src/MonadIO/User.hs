@@ -23,6 +23,10 @@ module MonadIO.User
 
 import Base1T
 
+-- base --------------------------------
+
+import Data.Type.Equality  ( type(~) )
+
 -- fpath -------------------------------
 
 import FPath.AbsDir           ( AbsDir, parseAbsDirP )

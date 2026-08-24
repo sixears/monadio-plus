@@ -69,6 +69,10 @@ import MonadError.IO.Error  ( (~~) )
 
 import Safe  ( headNote )
 
+-- tasty -------------------------------
+
+import Test.Tasty  ( DependencyType( AllSucceed ), dependentTestGroup )
+
 -- temporary ---------------------------
 
 import System.IO.Temp ( getCanonicalTemporaryDirectory,withSystemTempDirectory )
@@ -420,7 +424,7 @@ pResolveAbsDirTests =
       getTmpdir ∷ IO AbsDir
       getTmpdir = __parseAbsDirP__ ⊳ getCanonicalTemporaryDirectory
 
-   in testGroup "AbsDir"
+   in dependentTestGroup "AbsDir" AllSucceed
         [ testCase "inTmp ./" $ inTmp $ \ d → pResolve_ "./" ≫ (Right d @=?)
         , testCase "inTmp . (forgiveness of pResolve wrt trailing /)" $
             inTmp $ \ d → pResolve_ "."  ≫ (Right d @=?)
@@ -471,7 +475,7 @@ pResolveDirAbsDirTests =
       getTmpdir ∷ IO AbsDir
       getTmpdir = __parseAbsDirP__ ⊳ getCanonicalTemporaryDirectory
 
-   in testGroup "AbsDir"
+   in dependentTestGroup "AbsDir" AllSucceed
         [ testCase "withTmp ./" $
             withTmp $ \ d → pResolveDir_ d "./" ≫ (Right d @=?)
         , testCase "withTmp .//" $
@@ -529,7 +533,7 @@ pResolveAbsFileTests =
       pResolveDir_ ∷ AbsDir → 𝕋 → IO (Either FPathIOError AbsFile)
       pResolveDir_ d = ѥ ∘ pResolveDir d
 
-   in testGroup "AbsFile"
+   in dependentTestGroup "AbsFile" AllSucceed
         [ testCase "inTmp '' x" $
             inTmp $ \ d → pResolve_ "x" ≫
                             (Right (d ⫻ [relfile|x|] ∷ AbsFile) @=?)
@@ -582,7 +586,7 @@ pResolveAbsTests =
       pResolveDir_ ∷ AbsDir → 𝕋 → IO (Either FPathIOError Abs)
       pResolveDir_ d = ѥ ∘ pResolveDir d
 
-   in testGroup "Abs"
+   in dependentTestGroup "Abs" AllSucceed
         [ testCase "withTmp ''" $
             withTmp $ \ d → pResolveDir_ d "" ≫ (Left (_FPathEmptyE absT) @=?)
         , testCase "withTmp ./" $
@@ -630,17 +634,21 @@ inSystemTempDirectory t io =
             (\ _ → io $ __parseAbsDirP__ d)
 
 pResolveDirTests ∷ TestTree
-pResolveDirTests = testGroup "pResolveDir" [ pResolveDirAbsDirTests ]
+pResolveDirTests =
+  dependentTestGroup "pResolveDir" AllSucceed [ pResolveDirAbsDirTests ]
 
 pResolveTests ∷ TestTree
-pResolveTests = testGroup "pResolve" [ pResolveAbsDirTests
-                                     , pResolveAbsFileTests, pResolveAbsTests ]
+pResolveTests = dependentTestGroup "pResolve" AllSucceed [ pResolveAbsDirTests
+                                                         , pResolveAbsFileTests
+                                                         , pResolveAbsTests ]
 
 tests ∷ TestTree
-tests = testGroup "MonadIO.FPath" [ splitPointsTests, canonicalizeTests
-                                  , normalizeTests
-                                  , pResolveTests, pResolveDirTests
-                                  ]
+tests = dependentTestGroup "MonadIO.FPath" AllSucceed [ splitPointsTests
+                                                      , canonicalizeTests
+                                                      , normalizeTests
+                                                      , pResolveTests
+                                                      , pResolveDirTests
+                                                      ]
 
 ----------------------------------------
 

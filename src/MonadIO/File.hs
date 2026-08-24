@@ -82,6 +82,10 @@ import MonadError.IO.Error ( IOError )
 
 import Control.Monad.Trans ( lift )
 
+-- tasty -------------------------------
+
+import Test.Tasty  ( DependencyType( AllSucceed ), dependentTestGroup )
+
 -- text --------------------------------
 
 import Data.Text.IO qualified as TextIO
@@ -365,7 +369,8 @@ _readlinkTests name f getName getTarget getExp ts =
                              f (AbsF $ t ⫻ fn) ≫ assertRight (exp t @=?)
       -- check' ∷ IO AbsDir → α → TestTree
       check' d t = check d (getName t {- ⫥ filepath -}) (getExp t)
-      do_test tmpdir = testGroup name [ check' tmpdir t | t ← ts ]
+      do_test tmpdir = dependentTestGroup name AllSucceed
+                                          [ check' tmpdir t | t ← ts ]
 
   in testInTempDirFS file_setup (const $ return ()) do_test
 
@@ -438,10 +443,12 @@ rename (review _File_ → from) (review _File_ → to) =
 
 {-| unit tests -}
 tests ∷ TestTree
-tests = testGroup "MonadIO.File" [ isWritableDirTests, isWritableFileTests
-                                 , fileWritableTests, readlinkTests
-                                 , resolvelinkTests
-                                 ]
+tests = dependentTestGroup "MonadIO.File" AllSucceed [ isWritableDirTests
+                                                     , isWritableFileTests
+                                                     , fileWritableTests
+                                                     , readlinkTests
+                                                     , resolvelinkTests
+                                                     ]
 
 --------------------
 
