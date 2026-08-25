@@ -7,7 +7,7 @@
 
 module MonadIO.Temp
   ( OutputData(..), mkTempDir, mkTempDir', mkTempDir''
-  , tempfile, tempfile', tempfile''
+  , tempdir, __tempdir__, tempfile, tempfile', tempfile''
   , testsWithTempfile, testsWithTempfiles, testsWithTempfiles'
   , testsWithTempDir, testsWithTempDir', testsWithTempDir''
   , withTempDir, withTempDir', withTempDir''

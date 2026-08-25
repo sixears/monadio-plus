@@ -1,3 +1,8 @@
+2.6.5.0 2026-08-25
+==================
+- +`MonadIO.Temp.tempdir`
+- +`MonadIO.Temp.__tempdir__`
+
 2.6.4.1 2026-08-24
 ==================
 - `MonadIO.Directory.listdir*` now includes filesize in output
