@@ -7,6 +7,7 @@
 
 module MonadIO.Temp
   ( OutputData(..), mkTempDir, mkTempDir', mkTempDir''
+  , progNamePrefix, __progNamePrefix__
   , tempdir, __tempdir__, tempfile, tempfile', tempfile''
   , testsWithTempfile, testsWithTempfiles, testsWithTempfiles'
   , testsWithTempDir, testsWithTempDir', testsWithTempDir''
@@ -226,7 +227,7 @@ instance ReturnFNFH (AbsFile, ℍ) where
 ------------------------------------------------------------
 
 {-| A prefix (suitable for, e.g., temp files or dirs) in the form of a
-    `RelFile` (which is the programme name, plus a '-' character. -}
+    `RelFile` (which is the program name), plus a '-' character. -}
 progNamePrefix ∷ ∀ ε μ .
                  (MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε μ,
                   HasCallStack) ⇒
@@ -234,8 +235,8 @@ progNamePrefix ∷ ∀ ε μ .
 progNamePrefix = asIOError getProgName ≫ parse
 
 {-| A version of `progNamePrefix` in which errors are thrown into IO -}
-progNamePrefix' ∷ ∀ μ . (MonadIO μ, HasCallStack) ⇒ μ PathComponent
-progNamePrefix' = ӝ $ progNamePrefix @FPathIOError
+__progNamePrefix__ ∷ ∀ μ . (MonadIO μ, HasCallStack) ⇒ μ PathComponent
+__progNamePrefix__ = ӝ $ progNamePrefix @FPathIOError
 
 ----------------------------------------
 
@@ -766,7 +767,7 @@ testsWithTempDir''Tests =
       -- the fact
       prefix ∷ IO PathComponent -- the prefix of the tmpdir, in tempdir
       prefix = do
-        prog_name  ← progNamePrefix'
+        prog_name  ← __progNamePrefix__
         day        ← today
         pid        ← getProcessID
         let date   = formatTime defaultTimeLocale "%F" day
@@ -912,7 +913,7 @@ testsWithTempDir' name dirnam tsts =
 testsWithTempDir ∷ TestName
                  → [(TestName, AbsDir → Assertion)] {- ^ each test to run -}
                  → TestTree
-testsWithTempDir name = testsWithTempDir' name ((◇ [pc|-|]) ⊳ progNamePrefix')
+testsWithTempDir name = testsWithTempDir' name ((◇ [pc|-|]) ⊳ __progNamePrefix__)
 
 -- tests -----------------------------------------------------------------------
 

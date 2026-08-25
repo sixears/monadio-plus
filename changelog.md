@@ -1,3 +1,8 @@
+2.6.6.0 2026-08-25
+==================
+- +`MonadIO.Temp.progNamePrefix`
+- +`MonadIO.Temp.__progNamePrefix__`
+
 2.6.5.0 2026-08-25
 ==================
 - +`MonadIO.Temp.tempdir`

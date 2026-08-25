@@ -18,7 +18,7 @@ import MonadError  ( ѥ )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Either  ( pattern 𝕷, pattern 𝕽 )
+import Data.MoreUnicode.Either  ( pattern 𝓛, pattern 𝓡 )
 import Data.MoreUnicode.Monad   ( (≫), (⪼) )
 
 ------------------------------------------------------------
@@ -32,7 +32,7 @@ import MonadIO.Cwd  ( getCwd )
 main ∷ IO ()
 main = do
   ѥ @FPathIOError getCwd ≫ \ case
-    𝕽 cwd → putStrLn $ toString cwd
-    𝕷 e   → hPutStrLn stderr (toString e) ⪼ exitWith (ExitFailure 255)
+    𝓡 cwd → putStrLn $ toString cwd
+    𝓛 e   → hPutStrLn stderr (toString e) ⪼ exitWith (ExitFailure 255)
 
 -- that's all, folks! ----------------------------------------------------------
