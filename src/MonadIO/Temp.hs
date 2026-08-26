@@ -137,7 +137,7 @@ import System.Posix.Process  ( getProcessID )
 
 import MonadIO            ( warn )
 import MonadIO.Base       ( hClose, unlink )
-import MonadIO.Directory  ( chdir, inDir, glob, nuke, pwd, __pwd__)
+import MonadIO.Directory  ( chdir, inDir, glob, mkGlobRegex, nuke, pwd, __pwd__)
 import MonadIO.OpenFile   ( readFile, writeFile )
 
 --------------------------------------------------------------------------------
@@ -778,7 +778,7 @@ testsWithTempDir''Tests =
       glob' ∷ (MonadIO μ, Printable τ, MonadError FPathIOError μ) =>
               τ → AbsDir
             → μ ([(AbsFile,FStat)],[(AbsDir,FStat)],[(AbsFile,IOError)])
-      glob' p = glob  (toString p)
+      glob' p = glob (mkGlobRegex $ toString p)
 
   in  dependentTestGroup "testsWithTempDir''" AllSucceed $
         let testfile = [relfile|testfile|]

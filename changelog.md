@@ -1,3 +1,9 @@
+2.6.7.0 2026-08-26
+==================
+- +`MonadIO.Directory.GlobPCRERegex`
+- +`MonadIO.Directory.GlobPCRERegexable( mkGlobRegex )`
+- `MonadIO.Directory.glob` now takes a GlobPCRERegex
+
 2.6.6.0 2026-08-25
 ==================
 - +`MonadIO.Temp.progNamePrefix`

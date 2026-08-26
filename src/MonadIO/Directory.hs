@@ -8,8 +8,15 @@
 {-| Directory operations, as MonadIO, with MonadError handling -}
 
 module MonadIO.Directory
-  ( chdir, __chdir__, directoryList, glob, inDir, listdir, listdirStdOut,
-    listdirStdErr, lsdir, mkdir, mkpath, nuke, __nuke__, pwd, __pwd__ )
+  ( GlobPCRERegex, GlobPCRERegexable( mkGlobRegex )
+  , chdir, __chdir__
+  , directoryList, listdir, listdirStdOut, listdirStdErr, lsdir
+  , glob
+  , inDir
+  , mkdir, mkpath
+  , nuke, __nuke__
+  , pwd, __pwd__
+  )
 where
 
 import Base1T
@@ -253,7 +260,25 @@ directoryList opts d = do
     𝓛 e     → return ([],[],[],[(d,e)])
     𝓡 dstat → (([],[(d,dstat)],[],[]) ⊛) ⊳ go d
 
-----------------------------------------
+------------------------------------------------------------
+
+{-| just a wrapper around 𝕊 for now, potentially we can add other types, etc.
+    in the future -}
+data GlobPCRERegex = GlobPCRERegex { unGlobPCRERegex ∷ 𝕊 }
+  deriving Show
+
+--------------------
+
+{-| things that can be used as a GlobPCRERegex -}
+class GlobPCRERegexable α where
+  mkGlobRegex ∷ α → GlobPCRERegex
+
+----------
+
+instance GlobPCRERegexable 𝕊 where
+  mkGlobRegex = GlobPCRERegex
+
+------------------------------------------------------------
 
 {-| list all files matching a PCRE pattern in a directory -}
 glob ∷ ∀ ε ε' ρ μ .
@@ -265,12 +290,13 @@ glob ∷ ∀ ε ε' ρ μ .
            -- append `RelFile` to ρ to make a new path - hence ρ must be a file
            -- type
            AppendableFPathF ρ ~ RelFile) =>
-          𝕊 → AppendableFPathD ρ → μ ([(ρ,FStat)], [(DirType ρ,FStat)], [(ρ,ε')])
+       GlobPCRERegex → AppendableFPathD ρ
+     → μ ([(ρ,FStat)], [(DirType ρ,FStat)], [(ρ,ε')])
 
 glob patt d = do
   let pattFilt ∷ ∀ χ ξ . (Basename χ, Printable (RelType χ)) =>
                  [(χ,ξ)] → [(χ,ξ)]
-      pattFilt = filter (\ (s,_) → toString (basename s) =~ patt)
+      pattFilt = filter (\ (s,_) → toString (basename s) =~ unGlobPCRERegex patt)
   (fs,ds,es) ← lsdir d
   return (pattFilt fs, pattFilt ds, es)
 
