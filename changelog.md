@@ -1,3 +1,7 @@
+2.6.8.0 2026-08-27
+==================
+- `MonadIO.Directory.listdir*` now includes last modification date in output
+
 2.6.7.0 2026-08-26
 ==================
 - +`MonadIO.Directory.GlobPCRERegex`

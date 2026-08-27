@@ -59,7 +59,7 @@ import FPath.ToDir             ( ToDir )
 
 -- fstat -------------------------------
 
-import FStat  ( FStat, ftypeLSTxt, permLSTxt, size )
+import FStat  ( FStat, ftypeLSTxt, modification, permLSTxt, size )
 
 -- monaderror-io -----------------------
 
@@ -310,7 +310,8 @@ listdir ∷ ∀ ε μ .(MonadIO μ, AsFPathError ε, AsIOError ε, MonadError ε
 listdir opts d = do
   (files, dirs, ferrs, derrs) ← directoryList opts d
   let to_txt ∷ Printable τ => (τ,FStat) → 𝕋
-      to_txt (x,s) = [fmt|%t %t %7y %T|] (ftypeLSTxt s) (permLSTxt s) (size s) x
+      to_txt (x,s) = [fmt|%t%t %7y %z %T|] (ftypeLSTxt s) (permLSTxt s) (size s)
+                                           (modification s) x
       files_dirs = sortBy go $ ю [ first AbsF ⊳ files, first AbsD ⊳ dirs ]
                    where go (a,_) (b,_) = compare (toText a) (toText b)
       files_dirs_txts = to_txt ⊳ files_dirs
